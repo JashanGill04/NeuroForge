@@ -21,29 +21,30 @@ public class PipelineService {
     @Autowired private ProjectRepository projectRepository; // assumes this exists already
 
     // Called by the webhook when GitHub Actions finishes a build
-    public Pipeline recordBuildResult(PipelineWebhookRequest req) {
-        Project project = projectRepository.findById(req.getProjectId())
-                .orElseThrow(() -> new IllegalArgumentException("No project found with id " + req.getProjectId()));
-        Pipeline pipeline = new Pipeline();
-        pipeline.setStatus(req.getStatus());
-        pipeline.setDuration(req.getDuration());
-        pipeline.setCommitHash(req.getCommitHash());
-        pipeline.setBranch(req.getBranch());
-        pipeline.setStartedAt(LocalDateTime.now().minusSeconds(req.getDuration()));
-        pipeline.setFinishedAt(LocalDateTime.now());
+public PipelineResponse recordBuildResult(PipelineWebhookRequest req) {
+    Project project = projectRepository.findById(req.getProjectId())
+            .orElseThrow(() -> new IllegalArgumentException("No project found with id " + req.getProjectId()));
 
-        projectRepository.findById(req.getProjectId()).ifPresent(pipeline::setProject);
+    Pipeline pipeline = new Pipeline();
+    pipeline.setStatus(req.getStatus());
+    pipeline.setDuration(req.getDuration());
+    pipeline.setCommitHash(req.getCommitHash());
+    pipeline.setBranch(req.getBranch());
+    pipeline.setStartedAt(LocalDateTime.now().minusSeconds(req.getDuration()));
+    pipeline.setFinishedAt(LocalDateTime.now());
+    pipeline.setProject(project);
 
-        Deployment deployment = new Deployment();
-        deployment.setEnvironment(DeploymentEnvironment.valueOf(req.getEnvironment()));
-        deployment.setSuccess(req.isDeploymentSuccess());
-        deployment.setDeployedAt(LocalDateTime.now());
-        deployment.setPipeline(pipeline);
+    Deployment deployment = new Deployment();
+    deployment.setEnvironment(DeploymentEnvironment.valueOf(req.getEnvironment()));
+    deployment.setSuccess(req.isDeploymentSuccess());
+    deployment.setDeployedAt(LocalDateTime.now());
+    deployment.setPipeline(pipeline);
 
-        pipeline.getDeployments().add(deployment);
+    pipeline.getDeployments().add(deployment);
 
-        return pipelineRepository.save(pipeline); // cascades to Deployment
-    }
+    Pipeline saved = pipelineRepository.save(pipeline);
+    return toResponse(saved);   // ← convert before returning
+}
 
     public List<PipelineResponse> getHistory() {
         return pipelineRepository.findAll().stream()
