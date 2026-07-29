@@ -12,6 +12,7 @@ import SprintProgress from './pages/SprintProgress'
 import Blockers from './pages/Blockers'
 import Notifications from './pages/Notifications'
 import Analytics from './pages/Analytics'
+import PipelineDashboardTest from './pages/PipelineDashboardTest'
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/blockers" element={<Blockers />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/pipelinesdemo" element={<PipelineDashboardTest/>} />
         </Route>
       </Route>
 

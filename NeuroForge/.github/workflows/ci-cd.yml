@@ -1,0 +1,66 @@
+name: NeuroForge-backend-ci
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./Backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Record start time
+        id: timer
+        run: echo "start=$(date +%s)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and test with Maven
+        id: build
+        run: mvn clean verify
+
+      - name: Build Docker image
+        if: success()
+        run: docker build -t neuroforge-backend:${{ github.sha }} .
+
+      - name: Compute duration
+        id: duration
+        if: always()
+        run: |
+          end=$(date +%s)
+          echo "seconds=$(( end - ${{ steps.timer.outputs.start }} ))" >> "$GITHUB_OUTPUT"
+
+      - name: Report build result to backend
+        if: always()
+        run: |
+          STATUS="FAILED"
+          DEPLOY_OK="false"
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            STATUS="SUCCESS"
+            DEPLOY_OK="true"
+          fi
+
+          curl -X POST "${{ secrets.PIPELINE_WEBHOOK_URL }}/api/pipelines/webhook" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.PIPELINE_API_TOKEN }}" \
+            -d "{
+                  \"projectId\": 1,
+                  \"status\": \"${STATUS}\",
+                  \"duration\": ${{ steps.duration.outputs.seconds }},
+                  \"commitHash\": \"${{ github.sha }}\",
+                  \"branch\": \"${{ github.ref_name }}\",
+                  \"environment\": \"STAGING\",
+                  \"deploymentSuccess\": ${DEPLOY_OK}
+                }"
