@@ -12,6 +12,26 @@ jobs:
       run:
         working-directory: ./Backend
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: neuroforge_nexus
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/neuroforge_nexus
+      DB_USERNAME: postgres
+      DB_PASSWORD: testpass
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -56,7 +76,7 @@ jobs:
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.PIPELINE_API_TOKEN }}" \
             -d "{
-                  \"projectId\": 1,
+                  \"projectId\": 2,
                   \"status\": \"${STATUS}\",
                   \"duration\": ${{ steps.duration.outputs.seconds }},
                   \"commitHash\": \"${{ github.sha }}\",
