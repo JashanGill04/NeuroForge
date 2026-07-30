@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'neuroforge-backend'
         APP_PORT = '9000'
-        BACKEND_URL = 'http://localhost:9000'
+        BACKEND_URL = 'http://host.docker.internal:9000'
     }
 
     stages {
