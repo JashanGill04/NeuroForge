@@ -51,7 +51,6 @@ public class SecurityConfig {
 
                 // 4. Secure all endpoints
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/pipelines/webhook").permitAll()
                         .anyRequest().authenticated()
                 )
 
