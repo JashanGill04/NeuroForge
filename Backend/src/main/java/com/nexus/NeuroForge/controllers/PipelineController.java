@@ -15,10 +15,19 @@ public class PipelineController {
 
     @Autowired private PipelineService pipelineService;
 
-    // Called by GitHub Actions after build/test/deploy step
+    // Called by Jenkins' "Track Deployment" stage once the container is up.
+    // NOTE: this must be in the SecurityConfig permitAll list — Jenkins has no
+    // Keycloak token to send.
+    //
+    // Returns a PipelineResponse DTO rather than the raw Pipeline entity: Pipeline
+    // has a List<Deployment>, and each Deployment holds a back-reference to its
+    // parent Pipeline. Serializing the entity directly walks that cycle
+    // (pipeline -> deployments -> pipeline -> deployments -> ...) until Jackson
+    // hits its nesting limit and 500s. The DTO has no back-reference, so it's safe.
     @PostMapping("/webhook")
-    public Pipeline receiveBuildResult(@RequestBody PipelineWebhookRequest request) {
-        return pipelineService.recordBuildResult(request);
+    public PipelineResponse receiveBuildResult(@RequestBody PipelineWebhookRequest request) {
+        Pipeline saved = pipelineService.recordBuildResult(request);
+        return pipelineService.toResponse(saved);
     }
 
     @GetMapping

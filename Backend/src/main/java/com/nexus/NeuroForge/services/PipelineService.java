@@ -20,10 +20,11 @@ public class PipelineService {
     @Autowired private DeploymentRepository deploymentRepository;
     @Autowired private ProjectRepository projectRepository; // assumes this exists already
 
-    // Called by the webhook when GitHub Actions finishes a build
+    // Called by the webhook when Jenkins finishes a deploy
     public Pipeline recordBuildResult(PipelineWebhookRequest req) {
         Project project = projectRepository.findById(req.getProjectId())
                 .orElseThrow(() -> new IllegalArgumentException("No project found with id " + req.getProjectId()));
+
         Pipeline pipeline = new Pipeline();
         pipeline.setStatus(req.getStatus());
         pipeline.setDuration(req.getDuration());
@@ -31,8 +32,7 @@ public class PipelineService {
         pipeline.setBranch(req.getBranch());
         pipeline.setStartedAt(LocalDateTime.now().minusSeconds(req.getDuration()));
         pipeline.setFinishedAt(LocalDateTime.now());
-
-        projectRepository.findById(req.getProjectId()).ifPresent(pipeline::setProject);
+        pipeline.setProject(project); // fixed: reuse the project we already fetched above
 
         Deployment deployment = new Deployment();
         deployment.setEnvironment(DeploymentEnvironment.valueOf(req.getEnvironment()));
@@ -65,7 +65,7 @@ public class PipelineService {
         return new PipelineKpiDTO(total, successRate, avgDuration, today);
     }
 
-    private PipelineResponse toResponse(Pipeline p) {
+    public PipelineResponse toResponse(Pipeline p) {
         Deployment d = p.getDeployments().isEmpty() ? null : p.getDeployments().get(p.getDeployments().size() - 1);
         return new PipelineResponse(
                 p.getId(), p.getStatus().name(), p.getDuration(), p.getCommitHash(), p.getBranch(),
