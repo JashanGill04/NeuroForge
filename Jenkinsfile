@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'M3' 
-    }
-    
     environment {
         DOCKER_IMAGE = 'payment-service'
         PORT = '8081'
