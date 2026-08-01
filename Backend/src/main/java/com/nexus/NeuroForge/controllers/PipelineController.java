@@ -27,7 +27,6 @@ public class PipelineController {
     @PostMapping("/webhook")
     public PipelineResponse receiveBuildResult(@RequestBody PipelineWebhookRequest request) {
         Pipeline saved = pipelineService.recordBuildResult(request);
-        System.out.println("Build result received for pipeline: " + saved.getId());
         return pipelineService.toResponse(saved);
     }
 
