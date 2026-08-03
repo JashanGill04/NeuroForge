@@ -41,8 +41,7 @@ pipeline {
                     junit 'Backend/target/surefire-reports/*.xml'
                 }
             }
-        }
-        }
+        } // <--- FIX: Removed the extra closing brace that was here
 
         stage('Build Jar') {
             steps {
@@ -58,12 +57,19 @@ pipeline {
                     sh 'docker build -t neuroforge-service .'
                 }
                 sh 'docker rm -f neuroforge-container || true'
+                
+                // FIX: Restored the network and DB variables so Spring Boot actually starts!
                 sh '''
                 docker run -d --name neuroforge-container \
                     -p 9000:9000 \
+                    --network neuroforge_default \
+                    -e SPRING_DATASOURCE_URL=jdbc:postgresql://neuroforge-postgres:5432/neuroforge_nexus \
+                    -e SPRING_DATASOURCE_USERNAME=postgres \
+                    -e SPRING_DATASOURCE_PASSWORD=kitcoek \
                     --add-host=host.docker.internal:host-gateway \
                     neuroforge-service
                 '''
+                
                 sh '''
                 attempt=1
                 max_attempts=15
