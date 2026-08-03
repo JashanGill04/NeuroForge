@@ -11,6 +11,10 @@ public class PipelineWebhookRequest {
     private String branch;
     private String environment; // matches DeploymentEnvironment
     private boolean deploymentSuccess;
+    private int testsTotal;
+    private int testsPassed;
+    private int testsFailed;
+    private int testsSkipped;
 
     // getters/setters
     public Long getProjectId() { return projectId; }
@@ -27,4 +31,12 @@ public class PipelineWebhookRequest {
     public void setEnvironment(String environment) { this.environment = environment; }
     public boolean isDeploymentSuccess() { return deploymentSuccess; }
     public void setDeploymentSuccess(boolean deploymentSuccess) { this.deploymentSuccess = deploymentSuccess; }
+    public int getTestsTotal() { return testsTotal; }
+    public void setTestsTotal(int testsTotal) { this.testsTotal = testsTotal; }
+    public int getTestsPassed() { return testsPassed; }
+    public void setTestsPassed(int testsPassed) { this.testsPassed = testsPassed; }
+    public int getTestsFailed() { return testsFailed; }
+    public void setTestsFailed(int testsFailed) { this.testsFailed = testsFailed; }
+    public int getTestsSkipped() { return testsSkipped; }
+    public void setTestsSkipped(int testsSkipped) { this.testsSkipped = testsSkipped; }
 }
