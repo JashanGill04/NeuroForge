@@ -1,5 +1,7 @@
 package com.nexus.NeuroForge.models;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 // [M3][Jashanpreet] Pipeline entity — tracks a CI/CD build run.
 // Linked FROM: Jenkins webhook (POST /api/pipelines/webhook), triggered by GitHub push
 // Linked TO: Deployment (1:N) — one pipeline run can deploy to multiple envs
@@ -44,6 +46,7 @@ public class Pipeline {
     private Project project;
 
     @OneToMany(mappedBy = "pipeline", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<Deployment> deployments = new ArrayList<>();
 
     public Pipeline() {}

@@ -1,5 +1,7 @@
 package com.nexus.NeuroForge.models;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 // [M3][Jashanpreet] Deployment entity — one deploy attempt to one environment.
 // Linked TO: Pipeline (N:1, owning side), Release (1:1)
 // STATUS: added pipeline/release links + timestamp
@@ -24,6 +26,7 @@ public class Deployment {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pipeline_id")
+    @JsonBackReference
     private Pipeline pipeline;
 
     @OneToOne(mappedBy = "deployment", cascade = CascadeType.ALL, orphanRemoval = true)
