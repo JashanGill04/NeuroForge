@@ -26,8 +26,14 @@ pipeline {
                 // 2. Provision the database on a fresh, uncontested port (5444)
                 sh 'docker run -d --name test-postgres -p 5444:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=myrandompass -e POSTGRES_DB=neuroforge_nexus postgres:14'
 
-                // 3. Implement a readiness delay to allow the PostgreSQL engine to initialize
-                sh 'sleep 10'
+                // 3. Actively poll PostgreSQL until it is completely ready to accept connections
+                sh '''
+                echo "Waiting for PostgreSQL to initialize..."
+                until docker exec test-postgres pg_isready -U postgres; do
+                    sleep 2
+                done
+                echo "PostgreSQL is fully online!"
+                '''
 
                 // 4. Execute the test suite, injecting the newly mapped port and credential set via CLI parameters
                 dir('Backend') {
