@@ -52,8 +52,7 @@ pipeline {
                     sh 'docker build -t neuroforge-service .'
                 }
                 sh 'docker rm -f neuroforge-container || true'
-                sh 'docker run -d -p 9000:9000 --network neuroforge_default -e SPRING_DATASOURCE_URL=jdbc:postgresql://neuroforge-postgres:5432/neuroforge_nexus -e SPRING_DATASOURCE_USERNAME=postgres -e SPRING_DATASOURCE_PASSWORD=kitcoek --name neuroforge-container neuroforge-service'
-
+                sh 'mvn test -Dspring.datasource.url=jdbc:h2:mem:testdb -Dspring.datasource.driverClassName=org.h2.Driver -Dspring.datasource.username=sa -Dspring.datasource.password=password -Dspring.jpa.database-platform=org.hibernate.dialect.H2Dialect'
                 sh '''
                 attempt=1
                 max_attempts=15
