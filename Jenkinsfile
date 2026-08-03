@@ -67,7 +67,7 @@ pipeline {
                 // FIX: Restored the network and DB variables so Spring Boot actually starts!
                 sh '''
                 docker run -d --name neuroforge-container \
-                    -p 9000:9000 \
+                    -p 9001:9000 \
                     --network neuroforge_default \
                     -e SPRING_DATASOURCE_URL=jdbc:postgresql://neuroforge-postgres:5432/neuroforge_nexus \
                     -e SPRING_DATASOURCE_USERNAME=postgres \
