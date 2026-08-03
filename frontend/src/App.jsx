@@ -1,45 +1,53 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
-import Landing from './pages/Landing' // 1. Make sure to import this
+import ProjectLayout from './components/ProjectLayout'
+import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import Projects from './pages/Projects'
-import ProjectDetail from './pages/ProjectDetail'
 import Teams from './pages/Teams'
 import Users from './pages/Users'
-import KanbanBoard from './pages/KanbanBoard'
-import SprintProgress from './pages/SprintProgress'
-import Blockers from './pages/Blockers'
 import Notifications from './pages/Notifications'
-import Analytics from './pages/Analytics'
-import PipelineDashboardTest from './pages/PipelineDashboardTest'
+
+// Project-scoped pages (Milestone 2 restructure + Milestone 3 addition) —
+// nested under /projects/:projectId/* so a project is only ever picked once.
+import Board from './pages/project/Board'
+import Backlog from './pages/project/Backlog'
+import SprintsMilestones from './pages/project/SprintsMilestones'
+import Blockers from './pages/project/Blockers'
+import Reports from './pages/project/Reports'
+import Settings from './pages/project/Settings'
+import PipelineDashboard from './pages/project/PipelineDashboard'
 
 export default function App() {
   return (
     <Routes>
-      {/* 2. The public landing page */}
       <Route path="/" element={<Landing />} />
 
-      {/* 3. Protected routes */}
       <Route element={<ProtectedRoute />}>
+        {/* Workspace-level shell */}
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/projects" element={<Projects />} />
-          <Route path="/projects/:id" element={<ProjectDetail />} />
           <Route path="/teams" element={<Teams />} />
           <Route path="/users" element={<Users />} />
-
-          {/* Milestone 2 — mock-service-backed modules (see MILESTONE_2_REPORT.md) */}
-          <Route path="/tasks" element={<KanbanBoard />} />
-          <Route path="/sprint-progress" element={<SprintProgress />} />
-          <Route path="/blockers" element={<Blockers />} />
           <Route path="/notifications" element={<Notifications />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/pipelinesdemo" element={<PipelineDashboardTest/>} />
+        </Route>
+
+        {/* Project-level shell — its own sidebar (Board, Backlog, Sprints &
+            Milestones, Blockers, Reports, Settings, Pipeline & Deployments) */}
+        <Route path="/projects/:projectId" element={<ProjectLayout />}>
+          <Route index element={<Navigate to="board" replace />} />
+          <Route path="board" element={<Board />} />
+          <Route path="backlog" element={<Backlog />} />
+          <Route path="sprints" element={<SprintsMilestones />} />
+          <Route path="blockers" element={<Blockers />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="pipeline" element={<PipelineDashboard />} />
         </Route>
       </Route>
 
-      {/* 4. Catch-all: Redirect any unknown URL to dashboard */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )

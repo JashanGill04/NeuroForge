@@ -1,17 +1,19 @@
-# 1. Build Stage using the raw JDK 25 image
-FROM eclipse-temurin:25-jdk-jammy AS build
-
-# Manually install Maven since no official Java 25 + Maven image exists yet
-RUN apt-get update && apt-get install -y maven
-
+# ---- Build stage: compiles the jar inside Docker (no local Maven/JDK needed) ----
+FROM eclipse-temurin:25-jdk-alpine AS build
 WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
-COPY src ./src
-RUN mvn clean package -DskipTests
 
-# 2. Runtime Stage
-FROM eclipse-temurin:25-jre-jammy
+# Copy wrapper + pom first so dependency downloads are cached across rebuilds
+COPY mvnw pom.xml ./
+COPY .mvn .mvn
+RUN chmod +x mvnw
+RUN ./mvnw -B dependency:go-offline
+
+# Now copy source and build
+COPY src src
+RUN ./mvnw -B clean package -DskipTests
+
+# ---- Runtime stage: small JRE-only image ----
+FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 9000

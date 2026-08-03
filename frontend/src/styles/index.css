@@ -23,19 +23,25 @@
   --ink-faint: #62658a;
 
   /* Brand */
-  --accent: #7c6bff;
-  --accent-2: #4f8dff;
+  --accent: #8b6bff;
+  --accent-2: #3ea8ff;
+  --accent-3: #22d3c5;
   --accent-dark: #5b4bdb;
-  --accent-soft: rgba(124, 107, 255, 0.16);
-  --accent-gradient: linear-gradient(135deg, #7c6bff 0%, #4f8dff 100%);
+  --accent-soft: rgba(139, 107, 255, 0.18);
+  --accent-gradient: linear-gradient(135deg, #8b6bff 0%, #3ea8ff 60%, #22d3c5 100%);
+  --accent-gradient-2: linear-gradient(135deg, #ff7a5c 0%, #ffb454 100%);
 
   /* Status */
-  --danger: #ff6b6b;
-  --danger-soft: rgba(255, 107, 107, 0.14);
-  --success: #35d999;
-  --success-soft: rgba(53, 217, 153, 0.14);
+  --danger: #ff5c7a;
+  --danger-soft: rgba(255, 92, 122, 0.15);
+  --success: #2fdb8f;
+  --success-soft: rgba(47, 219, 143, 0.15);
   --hold: #ffb454;
-  --hold-soft: rgba(255, 180, 84, 0.14);
+  --hold-soft: rgba(255, 180, 84, 0.15);
+  --info: #3ea8ff;
+  --info-soft: rgba(62, 168, 255, 0.15);
+  --teal: #22d3c5;
+  --teal-soft: rgba(34, 211, 197, 0.15);
 
   /* Sidebar */
   --sidebar-bg: #07080f;
@@ -44,6 +50,8 @@
   /* Charts */
   --chart-grid: #1c1f38;
   --chart-axis: #62658a;
+  --chart-committed: #5b6bff;
+  --chart-completed: #22d3c5;
 
   --radius: 12px;
   --radius-lg: 18px;
@@ -533,6 +541,12 @@ a { color: inherit; }
 .badge-active { background: var(--success-soft); color: var(--success); }
 .badge-hold { background: var(--hold-soft); color: var(--hold); }
 .badge-done { background: var(--accent-soft); color: #cfc9ff; }
+.badge-completed { background: var(--accent-soft); color: #cfc9ff; }
+.badge-todo { background: var(--info-soft); color: var(--info); }
+.badge-in_progress { background: var(--hold-soft); color: var(--hold); }
+.badge-blocked { background: var(--danger-soft); color: var(--danger); display: inline-flex; align-items: center; gap: 4px; }
+.badge-milestone { background: var(--teal-soft); color: var(--teal); }
+.badge-success { background: var(--success-soft); color: var(--success); display: inline-flex; align-items: center; gap: 4px; }
 
 /* ---------- Alerts ---------- */
 .alert {
@@ -1028,3 +1042,238 @@ a { color: inherit; }
 .landing-footer-links { display: flex; gap: 20px; }
 
 
+
+/* =========================================================================
+   Project-level shell (Milestone 2 restructure)
+   ========================================================================= */
+.project-sidebar {
+  gap: 0;
+}
+
+.project-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  text-decoration: none;
+  padding: 4px 10px 14px;
+}
+.project-back-link:hover { color: var(--ink-soft); }
+
+.project-sidebar-title {
+  padding: 0 10px 20px;
+  border-bottom: 1px solid var(--sidebar-line);
+  margin-bottom: 16px;
+}
+
+.project-sidebar-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.project-sidebar-sub {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+.skeleton-text { opacity: 0.5; }
+
+.project-topbar {
+  justify-content: space-between;
+  padding: 0 28px;
+  gap: 16px;
+}
+
+.project-topbar-sprint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.project-topbar-sprint select { min-width: 220px; }
+
+.settings-hint {
+  margin-top: -8px;
+  margin-bottom: 8px;
+}
+
+.settings-danger-zone {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sprint-list-item { cursor: pointer; border-radius: 8px; padding-left: 8px; padding-right: 8px; }
+.sprint-list-item:hover { background: var(--surface-2); }
+.sprint-list-item-active { background: var(--accent-soft); }
+
+.team-add-member-btn { margin-top: 12px; width: 100%; justify-content: center; }
+
+.backlog-icon { color: var(--teal); }
+
+/* Kanban blocked-card treatment */
+.kanban-card-blocked {
+  border-left: 3px solid var(--danger);
+  background: linear-gradient(90deg, rgba(255, 92, 122, 0.08), transparent 40%);
+}
+.kanban-card-blocked-icon { color: var(--danger); margin-right: 6px; vertical-align: -2px; }
+
+/* =========================================================================
+   Task detail modal
+   ========================================================================= */
+.task-detail-modal { max-width: 760px; }
+
+.task-detail-body {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 26px;
+}
+@media (max-width: 720px) { .task-detail-body { grid-template-columns: 1fr; } }
+
+.task-detail-section { margin-bottom: 22px; }
+.task-detail-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+.task-detail-description { width: 100%; resize: vertical; }
+.task-detail-hint { font-size: 11.5px; color: var(--ink-faint); margin-top: 6px; }
+
+.task-comment-list { display: flex; flex-direction: column; gap: 10px; max-height: 180px; overflow-y: auto; margin-bottom: 12px; }
+.task-comment { background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: 8px; padding: 8px 10px; }
+.task-comment-author { font-size: 12px; font-weight: 650; color: var(--ink); }
+.task-comment-time { font-weight: 400; color: var(--ink-faint); margin-left: 6px; }
+.task-comment-text { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+
+.task-comment-form { display: flex; align-items: center; gap: 8px; }
+.task-comment-icon { color: var(--ink-faint); flex-shrink: 0; }
+.task-comment-form input { flex: 1; }
+
+.task-detail-field { margin-bottom: 18px; }
+.task-detail-value { font-size: 14px; font-weight: 600; color: var(--ink); }
+
+.task-activity-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.task-activity-item {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  padding-left: 14px;
+  position: relative;
+}
+.task-activity-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+.task-activity-danger::before { background: var(--danger); }
+.task-activity-success::before { background: var(--success); }
+
+/* =========================================================================
+   Workspace Analytics section (Dashboard) — project/milestone filters +
+   straight progress bar, no charts (per teammate feedback)
+   ========================================================================= */
+.analytics-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.analytics-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.analytics-filter select { min-width: 200px; }
+
+.progress-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.progress-panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.progress-panel-title { font-weight: 700; color: var(--ink); font-size: 14.5px; }
+.progress-panel-value { font-weight: 700; color: var(--accent-2); font-size: 13.5px; }
+.progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent-gradient);
+  transition: width 0.3s ease;
+}
+
+/* =========================================================================
+   Search / filter toolbars (Users, Teams)
+   ========================================================================= */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.search-input-wrap {
+  position: relative;
+  flex: 1 1 260px;
+  min-width: 200px;
+}
+.search-input-wrap svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+.search-input-wrap input {
+  width: 100%;
+  padding: 8px 10px 8px 32px;
+}
+.toolbar .inline-select { flex: 0 0 auto; }
+.toolbar-result-count {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+/* =========================================================================
+   Pipeline & Deployment dashboard (Milestone 3)
+   ========================================================================= */
+.stat-value-success { color: var(--success); }
+.stat-value-unit { font-size: 13px; color: var(--ink-soft); font-weight: 500; margin-left: 4px; }
+.pipeline-commit { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12.5px; display: flex; align-items: center; gap: 5px; color: var(--ink-soft); }
+.pipeline-duration-icon { color: var(--ink-faint); vertical-align: -2px; margin-right: 3px; }

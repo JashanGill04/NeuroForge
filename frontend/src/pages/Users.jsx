@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Search } from 'lucide-react'
 import { usersApi } from '../api/users'
 import { teamsApi } from '../api/teams'
 import { useAuth } from '../context/AuthContext'
-import { Alert } from '../components/ui'
+import { Alert, EmptyState } from '../components/ui'
 import { ROLES, roleLabel } from '../utils/roles'
 
 export default function Users() {
@@ -13,6 +14,9 @@ export default function Users() {
   const [teams, setTeams] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [teamFilter, setTeamFilter] = useState('')
 
   // 2. Cleanly check if the user is an admin using Keycloak's roles
   const isAdmin = hasRole('ADMIN')
@@ -69,6 +73,21 @@ export default function Users() {
     }
   }
 
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return users.filter((u) => {
+      const matchesSearch =
+        !q ||
+        u.username?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q)
+      const matchesRole = !roleFilter || u.role === roleFilter
+      const matchesTeam =
+        !teamFilter ||
+        (teamFilter === 'UNASSIGNED' ? !u.teamId : String(u.teamId || '') === teamFilter)
+      return matchesSearch && matchesRole && matchesTeam
+    })
+  }, [users, search, roleFilter, teamFilter])
+
   return (
     <div className="page">
       <div className="page-header">
@@ -83,7 +102,37 @@ export default function Users() {
       <Alert onClose={() => setError('')}>{error}</Alert>
 
       <div className="panel">
-        {!loading && (
+        <div className="toolbar">
+          <div className="search-input-wrap">
+            <Search size={15} />
+            <input
+              type="text"
+              placeholder="Search by username or email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select className="inline-select" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+            <option value="">All roles</option>
+            {ROLES.map((r) => (
+              <option key={r} value={r}>{roleLabel(r)}</option>
+            ))}
+          </select>
+          <select className="inline-select" value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)}>
+            <option value="">All teams</option>
+            <option value="UNASSIGNED">Unassigned</option>
+            {teams.map((t) => (
+              <option key={t.id} value={String(t.id)}>{t.name}</option>
+            ))}
+          </select>
+          {!loading && (
+            <span className="toolbar-result-count">{filteredUsers.length} of {users.length}</span>
+          )}
+        </div>
+
+        {!loading && filteredUsers.length === 0 ? (
+          <EmptyState title="No matching users" subtitle="Try a different search term or clear the filters." />
+        ) : !loading && (
           <table className="table">
             <thead>
               <tr>
@@ -94,7 +143,7 @@ export default function Users() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <tr key={u.id}>
                   <td>
                     {/* 3. Match by Keycloak username instead of DB ID */}

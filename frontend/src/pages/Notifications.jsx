@@ -55,7 +55,7 @@ export default function Notifications() {
         ) : (
           <ul className="list">
             {notifications.map((n) => (
-              <li key={n.name} className={`list-item notification-item ${n.read ? 'list-item-muted' : ''}`}>
+              <li key={n.id} className={`list-item notification-item ${n.read ? 'list-item-muted' : ''}`}>
                 <div className="notification-icon"><Bell size={14} /></div>
                 <div className="notification-body">
                   <div className="list-item-title">{n.message}</div>

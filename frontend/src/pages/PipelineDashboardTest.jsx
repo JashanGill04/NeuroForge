@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { pipelinesApi } from '../api/pipeline'
-import { Alert, StatusBadge, EmptyState } from './ui'
+import { Alert, StatusBadge, EmptyState } from '../components/ui'
 
 const POLL_INTERVAL_MS = 30000
 

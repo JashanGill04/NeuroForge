@@ -1,25 +1,19 @@
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import {
-  LayoutDashboard, FolderKanban, Users2, UserCircle, Trello,
-  TrendingUp, AlertTriangle, Bell, BarChart3, LogOut
-} from 'lucide-react'
+import { LayoutDashboard, FolderKanban, Users2, UserCircle, Bell, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { roleLabel } from '../utils/roles'
 import { notificationService } from '../services/notificationService'
 
-const milestone1Items = [
+// Workspace-level nav only. Project-level nav (Board, Backlog, Sprints &
+// Milestones, Blockers, Reports, Settings, and Milestone 3's Pipeline &
+// Deployments) lives in ProjectLayout.jsx instead — a project isn't
+// re-picked on every page, per the Milestone 2 UI restructure handoff.
+const workspaceItems = [
   { to: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { to: '/projects', label: 'Projects', Icon: FolderKanban },
   { to: '/teams', label: 'Teams', Icon: Users2 },
   { to: '/users', label: 'Users', Icon: UserCircle }
-]
-
-const milestone2Items = [
-  { to: '/tasks', label: 'Task Manager', Icon: Trello },
-  { to: '/sprint-progress', label: 'Sprint Progress', Icon: TrendingUp },
-  { to: '/blockers', label: 'Blockers', Icon: AlertTriangle },
-  { to: '/analytics', label: 'Analytics', Icon: BarChart3 }
 ]
 
 export default function AppLayout() {
@@ -27,12 +21,8 @@ export default function AppLayout() {
   const [unread, setUnread] = useState(0)
 
   useEffect(() => {
-    notificationService.getAll().then((list) => setUnread(list.filter((n) => !n.read).length))
+    notificationService.getAll().then((list) => setUnread(list.filter((n) => !n.read).length)).catch(() => {})
   }, [])
-
-  const handleLogout = () => {
-    logout()
-  }
 
   return (
     <div className="app-shell">
@@ -46,21 +36,7 @@ export default function AppLayout() {
         </div>
 
         <nav className="nav-list">
-          {milestone1Items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
-            >
-              <item.Icon size={17} className="nav-icon" />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="nav-section-label">Agile &amp; Tracking</div>
-        <nav className="nav-list">
-          {milestone2Items.map((item) => (
+          {workspaceItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -80,7 +56,7 @@ export default function AppLayout() {
               <div className="user-role">{roleLabel(roles?.[0]) || roles?.[0]}</div>
             </div>
           </div>
-          <button className="btn-ghost" onClick={handleLogout}>
+          <button className="btn-ghost" onClick={logout}>
             <LogOut size={15} /> Log out
           </button>
         </div>

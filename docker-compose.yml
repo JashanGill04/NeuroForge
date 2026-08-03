@@ -1,5 +1,4 @@
 services:
-
   postgres:
     image: postgres:16
     container_name: neuroforge-postgres
@@ -18,6 +17,21 @@ services:
       retries: 5
       start_period: 30s
 
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+    container_name: jenkins
+    ports:
+      - "9090:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_volumes:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    user: root 
+    environment:
+      - JAVA_OPTS="-Dhudson.security.csrf.GlobalCrumbIssuerConfiguration.DISABLE_CSRF_PROTECTION=true"
+
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
     container_name: neuroforge-keycloak
@@ -30,8 +44,7 @@ services:
     volumes:
       - keycloak_data:/opt/keycloak/data
       - ./keycloak/import:/opt/keycloak/data/import 
-      - ./keycloak-themes:/opt/keycloak/themes/neuroforge   # <-- add this
-  
+      - ./keycloak-themes:/opt/keycloak/themes/neuroforge 
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 || exit 1"]
       interval: 10s
@@ -100,8 +113,8 @@ services:
       - "5173:80"
     depends_on:
       - backend
-
 volumes:
   postgres_data:
   keycloak_data:
   kafka_data:
+  jenkins_volumes:
