@@ -19,6 +19,13 @@ pipeline {
         }
 
         stage('Run Tests') {
+            // FIX 1: Provide the missing database credentials so Spring Boot can boot the context during tests.
+            // If your test DB is hosted elsewhere (or requires a different URL), update the SPRING_DATASOURCE_URL.
+            environment {
+                SPRING_DATASOURCE_URL = 'jdbc:postgresql://host.docker.internal:5432/neuroforge_nexus' 
+                SPRING_DATASOURCE_USERNAME = 'postgres'
+                SPRING_DATASOURCE_PASSWORD = 'kitcoek'
+            }
             steps {
                 dir('Backend') {
                     sh 'mvn test'
@@ -68,10 +75,11 @@ pipeline {
         stage('Notify API Controller') {
             steps {
                 script {
-                    def testResults = currentBuild.testResultAction
-                    def totalTests = testResults ? testResults.totalCount : 0
-                    def failedTests = testResults ? testResults.failCount : 0
-                    def skippedTests = testResults ? testResults.skipCount : 0
+                    // FIX 2: Correctly access the JUnit test results using currentBuild.rawBuild
+                    def testAction = currentBuild.rawBuild?.getAction(hudson.tasks.junit.TestResultAction.class)
+                    def totalTests = testAction ? testAction.getTotalCount() : 0
+                    def failedTests = testAction ? testAction.getFailCount() : 0
+                    def skippedTests = testAction ? testAction.getSkipCount() : 0
                     def passedTests = totalTests - failedTests - skippedTests
 
                     def successPayload = """{"projectId": ${env.PROJECT_ID}, "status": "SUCCESS", "duration": 120, "commitHash": "${env.GIT_COMMIT}", "branch": "origin/main", "environment": "${env.ENV_NAME}", "deploymentSuccess": true, "testsTotal": ${totalTests}, "testsPassed": ${passedTests}, "testsFailed": ${failedTests}, "testsSkipped": ${skippedTests}}"""
@@ -86,10 +94,11 @@ pipeline {
     post {
         failure {
             script {
-                def testResults = currentBuild.testResultAction
-                def totalTests = testResults ? testResults.totalCount : 0
-                def failedTests = testResults ? testResults.failCount : 0
-                def skippedTests = testResults ? testResults.skipCount : 0
+                // FIX 2 (Continued): Apply the same correction in the failure block
+                def testAction = currentBuild.rawBuild?.getAction(hudson.tasks.junit.TestResultAction.class)
+                def totalTests = testAction ? testAction.getTotalCount() : 0
+                def failedTests = testAction ? testAction.getFailCount() : 0
+                def skippedTests = testAction ? testAction.getSkipCount() : 0
                 def passedTests = totalTests - failedTests - skippedTests
 
                 def failurePayload = """{"projectId": ${env.PROJECT_ID}, "status": "FAILED", "duration": 120, "commitHash": "${env.GIT_COMMIT}", "branch": "origin/main", "environment": "${env.ENV_NAME}", "deploymentSuccess": false, "testsTotal": ${totalTests}, "testsPassed": ${passedTests}, "testsFailed": ${failedTests}, "testsSkipped": ${skippedTests}}"""
