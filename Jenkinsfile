@@ -20,25 +20,28 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                // 1. Spin up an isolated PostgreSQL container strictly for the test phase
+                // 1. Purge any previous instance of the test database
                 sh 'docker rm -f test-postgres || true'
-                sh 'docker run -d --name test-postgres -p 5433:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=myrandompass -e POSTGRES_DB=neuroforge_nexus postgres:14'
+                
+                // 2. Provision the database on a fresh, uncontested port (5444)
+                sh 'docker run -d --name test-postgres -p 5444:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=myrandompass -e POSTGRES_DB=neuroforge_nexus postgres:14'
 
-                // 2. Give PostgreSQL 10 seconds to fully boot up and accept connections
+                // 3. Implement a readiness delay to allow the PostgreSQL engine to initialize
                 sh 'sleep 10'
 
-                // 3. Run the tests mapped to this isolated database, passing the random password
+                // 4. Execute the test suite, injecting the newly mapped port and credential set via CLI parameters
                 dir('Backend') {
-                    sh 'mvn test -Dspring.datasource.url=jdbc:postgresql://host.docker.internal:5433/neuroforge_nexus -Dspring.datasource.username=postgres -Dspring.datasource.password=myrandompass -Dspring.jpa.hibernate.ddl-auto=create-drop -Dspring.jpa.defer-datasource-initialization=true'
+                    sh 'mvn test -Dspring.datasource.url=jdbc:postgresql://host.docker.internal:5444/neuroforge_nexus -Dspring.datasource.username=postgres -Dspring.datasource.password=myrandompass -Dspring.jpa.hibernate.ddl-auto=create-drop -Dspring.jpa.defer-datasource-initialization=true'
                 }
             }
             post {
                 always {
-                    // 4. Destroy the temporary database so it doesn't consume host resources
+                    // 5. Terminate the ephemeral database to immediately free host resources
                     sh 'docker rm -f test-postgres || true'
                     junit 'Backend/target/surefire-reports/*.xml'
                 }
             }
+        }
         }
 
         stage('Build Jar') {
