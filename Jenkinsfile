@@ -23,19 +23,7 @@ pipeline {
             // so no external Postgres credentials are needed here anymore.
             steps {
                 dir('Backend') {
-                    stage('Run Tests') {
-    steps {
-        dir('Backend') {
-            // Forcefully override properties via CLI to guarantee H2 is used
-            sh 'mvn test -Dspring.datasource.url=jdbc:h2:mem:testdb -Dspring.datasource.driverClassName=org.h2.Driver -Dspring.datasource.username=sa -Dspring.datasource.password=password -Dspring.jpa.database-platform=org.hibernate.dialect.H2Dialect -Dspring.jpa.hibernate.ddl-auto=create-drop'
-        }
-    }
-    post {
-        always {
-            junit 'Backend/target/surefire-reports/*.xml'
-        }
-    }
-}
+                    sh 'mvn test -Dspring.datasource.url=jdbc:h2:mem:testdb -Dspring.datasource.driverClassName=org.h2.Driver -Dspring.datasource.username=sa -Dspring.datasource.password=password -Dspring.jpa.database-platform=org.hibernate.dialect.H2Dialect -Dspring.jpa.hibernate.ddl-auto=create-drop'
                 }
             }
             post {
