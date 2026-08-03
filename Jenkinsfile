@@ -19,15 +19,23 @@ pipeline {
         }
 
         stage('Run Tests') {
-            // Tests now use the H2 in-memory DB via the "test" profile (application-test.properties),
-            // so no external Postgres credentials are needed here anymore.
             steps {
+                // 1. Spin up an isolated PostgreSQL container strictly for the test phase
+                sh 'docker rm -f test-postgres || true'
+                sh 'docker run -d --name test-postgres -p 5433:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=myrandompass -e POSTGRES_DB=neuroforge_nexus postgres:14'
+
+                // 2. Give PostgreSQL 10 seconds to fully boot up and accept connections
+                sh 'sleep 10'
+
+                // 3. Run the tests mapped to this isolated database, passing the random password
                 dir('Backend') {
-                    sh 'mvn test -Dspring.datasource.url=jdbc:h2:mem:testdb -Dspring.datasource.driverClassName=org.h2.Driver -Dspring.datasource.username=sa -Dspring.datasource.password=password -Dspring.jpa.database-platform=org.hibernate.dialect.H2Dialect -Dspring.jpa.hibernate.ddl-auto=create-drop'
+                    sh 'mvn test -Dspring.datasource.url=jdbc:postgresql://host.docker.internal:5433/neuroforge_nexus -Dspring.datasource.username=postgres -Dspring.datasource.password=myrandompass -Dspring.jpa.hibernate.ddl-auto=create-drop -Dspring.jpa.defer-datasource-initialization=true'
                 }
             }
             post {
                 always {
+                    // 4. Destroy the temporary database so it doesn't consume host resources
+                    sh 'docker rm -f test-postgres || true'
                     junit 'Backend/target/surefire-reports/*.xml'
                 }
             }
