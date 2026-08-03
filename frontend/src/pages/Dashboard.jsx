@@ -163,7 +163,7 @@ export default function Dashboard() {
 
         {!loading && recentProjects.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-title">No projects yet</div>
+            <div className="empty-title">No projects</div>
             <div className="empty-sub">
               <Link to="/projects">Create your first project</Link> to get started.
             </div>
