@@ -31,13 +31,18 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    try {
-                        def rawCommitMsg = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
-                        echo "DEBUG rawCommitMsg = [${rawCommitMsg}]"
-                        env.GIT_MSG = rawCommitMsg ? rawCommitMsg.replaceAll('"', '\\\\"') : "No commit message"
-                    } catch (Exception e) {
-                        echo "DEBUG checkout exception: ${e.message}"
-                        env.GIT_MSG = "Manual build (no new commits)"
+                    script {
+                        def rc = sh(script: 'git log -1 --pretty=%B > /tmp/msg.txt 2>/tmp/msg.err; echo $?', returnStdout: true).trim()
+                        def msg = readFile('/tmp/msg.txt').trim()
+                        def err = readFile('/tmp/msg.err').trim()
+                        echo "DEBUG git log exit=${rc} msg=[${msg}] err=[${err}] pwd=${pwd()}"
+                        env.GIT_MSG = msg ? msg.replaceAll('"', '\\\\"') : "No commit message"
+
+                        def rc2 = sh(script: 'git rev-parse HEAD > /tmp/hash.txt 2>/tmp/hash.err; echo $?', returnStdout: true).trim()
+                        def hash = readFile('/tmp/hash.txt').trim()
+                        def herr = readFile('/tmp/hash.err').trim()
+                        echo "DEBUG rev-parse HEAD exit=${rc2} hash=[${hash}] err=[${herr}]"
+                        env.GIT_COMMIT = hash ?: "unknown"
                     }
 
                     try {
