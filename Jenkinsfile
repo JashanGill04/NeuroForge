@@ -46,13 +46,6 @@ pipeline {
                     }
 
                     try {
-                        // 2. Directly grab the exact commit hash
-                        env.GIT_COMMIT = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
-                    } catch (Exception e) {
-                        env.GIT_COMMIT = "unknown"
-                    }
-
-                    try {
                         // 3. Directly grab the active branch name
                         env.GIT_BRANCH_NAME = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
                     } catch (Exception e) {
