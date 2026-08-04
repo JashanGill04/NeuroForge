@@ -29,17 +29,21 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    // Safely fetch commit message using Jenkins native changeSets
-                    def commitMsg = ""
-                    def changeLogSets = currentBuild.changeSets
-                    if (changeLogSets != null && changeLogSets.size() > 0) {
-                        def entries = changeLogSets[0].items
-                        if (entries != null && entries.length > 0) {
-                            commitMsg = entries[entries.length - 1].msg
-                        }
+                    try {
+                        // 1. Directly ask Git for the actual commit message
+                        def rawCommitMsg = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
+                        // Escape double quotes so it doesn't break our JSON payload later!
+                        env.GIT_MSG = rawCommitMsg.replaceAll('"', '\\\\"')
+                    } catch (Exception e) {
+                        env.GIT_MSG = "Manual build (no new commits)"
                     }
-                    // Fallback to a default if it's a manual build with no new commits
-                    env.GIT_MSG = commitMsg ?: "Manual build (no new commits)"
+
+                    try {
+                        // 2. Safely grab the exact commit Hash too, just in case Jenkins misses it
+                        env.GIT_COMMIT = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    } catch (Exception e) {
+                        env.GIT_COMMIT = "unknown"
+                    }
                 }
             }
         }
