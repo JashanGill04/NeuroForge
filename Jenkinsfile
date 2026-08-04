@@ -32,10 +32,11 @@ pipeline {
                 checkout scm
                 script {
                     try {
-                        // 1. Directly fetch the latest commit message via shell and escape double quotes
                         def rawCommitMsg = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
+                        echo "DEBUG rawCommitMsg = [${rawCommitMsg}]"
                         env.GIT_MSG = rawCommitMsg ? rawCommitMsg.replaceAll('"', '\\\\"') : "No commit message"
                     } catch (Exception e) {
+                        echo "DEBUG checkout exception: ${e.message}"
                         env.GIT_MSG = "Manual build (no new commits)"
                     }
 
