@@ -37,7 +37,7 @@ pipeline {
             steps {
                 dir('Backend') {
                     // Note: Tests are skipped here, so test metrics in the payload are mocked
-                    sh 'mvn clean package -DskipTests' 
+                    sh 'mvn clean test jacoco:report package'
                 }
             }
         }
@@ -70,58 +70,101 @@ pipeline {
         }
     }
     
-    post {
-        always {
-            script {
-                // 1. Determine final build status and duration dynamically
-                def buildStatus = currentBuild.currentResult ?: 'SUCCESS'
-                def isSuccess = (buildStatus == 'SUCCESS')
-                def durationSecs = currentBuild.duration ? (currentBuild.duration / 1000).toInteger() : 0
+post {
+    always {
+        script {
+            def buildStatus = currentBuild.currentResult ?: 'SUCCESS'
+            def isSuccess = (buildStatus == 'SUCCESS')
+            def durationSecs = currentBuild.duration ? (currentBuild.duration / 1000).toInteger() : 0
 
-                // 2. Build the payload as a Groovy Map
-                def payloadMap = [
-                    projectId: env.PROJECT_ID.toInteger(),
-                    status: buildStatus,
-                    duration: durationSecs,
-                    commitHash: env.GIT_COMMIT ?: "unknown",
-                    commitMessage: env.GIT_MSG ?: "No commit message",
-                    branch: env.BRANCH_NAME ?: "origin/main",
-                    triggerSource: "JENKINS",
-                    environment: env.ENV_NAME,
-                    deploymentSuccess: isSuccess,
-                    
-                    // Sending a basic representation of stages
-                    stages: [
-                        [name: "Checkout", status: "SUCCESS", durationSeconds: 5],
-                        [name: "Build Jar", status: "SUCCESS", durationSeconds: 45],
-                        [name: "Build & Deploy", status: buildStatus, durationSeconds: 30]
-                    ],
-                    
-                    // Placeholder metrics (requires removing -DskipTests and parsing surefire XML for real data)
-                    testSummary: [
-                        passed: 10,
-                        failed: 0,
-                        skipped: 0,
-                        coveragePercent: 85.0
-                    ],
-                    
-                    // Deployment metrics for the container
-                    deploymentInfo: [
-                        imageTag: "neuroforge-service",
-                        podsRunning: 1,
-                        podsTotal: 1,
-                        cpuPercent: 15.5,
-                        memoryPercent: 45.2
-                    ]
-                ]
-
-                // 3. Serialize to JSON and send
-                def jsonPayload = groovy.json.JsonOutput.toJson(payloadMap)
-                writeFile file: 'payload.json', text: jsonPayload
+            // 1. Extract Real Test Metrics (From Surefire XML)
+            def testsPassed = 0
+            def testsFailed = 0
+            def testsSkipped = 0
+            
+            try {
+                // Greps the Surefire reports for the total counts
+                def testStats = sh(script: '''
+                    awk -F'"' '/<testsuite/ {tests+=$6; failures+=$8; errors+=$10; skipped+=$12} END {print tests","failures+errors","skipped}' Backend/target/surefire-reports/TEST-*.xml || echo "0,0,0"
+                ''', returnStdout: true).trim().split(',')
                 
-                echo "Sending Webhook Payload: ${jsonPayload}"
-                sh "curl -s -X POST ${env.CONTROLLER_URL} -H 'Content-Type: application/json' -d @payload.json"
+                def totalTests = testStats[0].toInteger()
+                testsFailed = testStats[1].toInteger()
+                testsSkipped = testStats[2].toInteger()
+                testsPassed = totalTests - testsFailed - testsSkipped
+            } catch (Exception e) {
+                echo "Could not parse test results: ${e.message}"
             }
+
+            // 2. Extract Real Coverage (From JaCoCo CSV)
+            def coverageVal = 0.0
+            try {
+                def covString = sh(script: '''
+                    awk -F"," '{ instructions += $4 + $5; covered += $5 } END { if (instructions > 0) print (covered/instructions)*100; else print 0 }' Backend/target/site/jacoco/jacoco.csv || echo "0.0"
+                ''', returnStdout: true).trim()
+                coverageVal = covString.toDouble().round(2)
+            } catch (Exception e) {
+                echo "Could not parse coverage: ${e.message}"
+            }
+
+            // 3. Extract Real Docker Deployment Metrics
+            def cpuUsage = 0.0
+            def memUsage = 0.0
+            def isRunning = 0
+            
+            if (isSuccess) {
+                try {
+                    // Check if container is running (1 = yes, 0 = no)
+                    def runningStatus = sh(script: 'docker inspect -f "{{.State.Running}}" neuroforge-container || echo "false"', returnStdout: true).trim()
+                    isRunning = (runningStatus == "true") ? 1 : 0
+                    
+                    // Grab live CPU and Memory stats from the container
+                    if (isRunning == 1) {
+                        def dockerStats = sh(script: 'docker stats neuroforge-container --no-stream --format "{{.CPUPerc}},{{.MemPerc}}" || echo "0.0%,0.0%"', returnStdout: true).trim()
+                        // Remove the '%' signs and split
+                        def cleanStats = dockerStats.replaceAll('%', '').split(',')
+                        cpuUsage = cleanStats[0].toDouble()
+                        memUsage = cleanStats[1].toDouble()
+                    }
+                } catch (Exception e) {
+                    echo "Could not fetch Docker stats: ${e.message}"
+                }
+            }
+
+            // 4. Build the payload with the dynamic variables
+            def payloadMap = [
+                projectId: env.PROJECT_ID.toInteger(),
+                status: buildStatus,
+                duration: durationSecs,
+                commitHash: env.GIT_COMMIT ?: "unknown",
+                commitMessage: env.GIT_MSG ?: "No commit message",
+                branch: env.BRANCH_NAME ?: "origin/main",
+                triggerSource: "JENKINS",
+                environment: env.ENV_NAME,
+                deploymentSuccess: isSuccess,
+                
+                testSummary: [
+                    passed: testsPassed,
+                    failed: testsFailed,
+                    skipped: testsSkipped,
+                    coveragePercent: coverageVal
+                ],
+                
+                deploymentInfo: [
+                    imageTag: "neuroforge-service",
+                    podsRunning: isRunning,
+                    podsTotal: 1, // Single docker container setup
+                    cpuPercent: cpuUsage,
+                    memoryPercent: memUsage
+                ]
+            ]
+
+            def jsonPayload = groovy.json.JsonOutput.toJson(payloadMap)
+            writeFile file: 'payload.json', text: jsonPayload
+            
+            echo "Sending Webhook Payload: ${jsonPayload}"
+            sh "curl -s -X POST ${env.CONTROLLER_URL} -H 'Content-Type: application/json' -d @payload.json"
         }
     }
+}
 }
