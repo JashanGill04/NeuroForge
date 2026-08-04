@@ -1,10 +1,10 @@
-// ---- Helper functions and shared state — MUST be declared before pipeline{} ----
+import groovy.transform.Field
 
-def stageResults = []
-def testPassed = 0
-def testFailed = 0
-def testSkipped = 0
-def testCoverage = 0.0
+@Field def stageResults = []
+@Field def testPassed = 0
+@Field def testFailed = 0
+@Field def testSkipped = 0
+@Field def testCoverage = 0.0
 
 def recordStage(name, status, startTime) {
     def durationSeconds = ((System.currentTimeMillis() - startTime) / 1000) as int
@@ -76,8 +76,6 @@ def sendWebhook(status, deploymentSuccess) {
     writeFile file: 'payload.json', text: payload
     sh "curl -X POST ${env.CONTROLLER_URL} -H \"Content-Type: application/json\" -d @payload.json"
 }
-
-// ---- Pipeline ----
 
 pipeline {
     agent any
