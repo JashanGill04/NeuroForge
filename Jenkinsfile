@@ -15,7 +15,7 @@ def parseTestSummary() {
     def summaryOutput = sh(
         script: '''
             passed=0; failed=0; skipped=0
-            for f in target/surefire-reports/*.txt; do
+            for f in Backend/target/surefire-reports/*.txt; do
                 [ -e "$f" ] || continue
                 line=$(grep "Tests run:" "$f" | head -1)
                 run=$(echo "$line" | sed -n 's/.*Tests run: \\([0-9]*\\).*/\\1/p')
@@ -120,23 +120,34 @@ pipeline {
             }
         }
 
-        stage('Run Tests') {
+        stage('Run Tests in Container') {
             steps {
                 script {
                     def stageStart = System.currentTimeMillis()
                     try {
                         dir('Backend') {
-                            sh 'mvn test'
+                            // Build only up to the 'build' stage of the multi-stage Dockerfile
+                            sh 'docker build --target build -t neuroforge-test-runner .'
+
+                            sh '''
+                            mkdir -p target
+                            docker run --rm \
+                              --network neuroforge_default \
+                              -e SPRING_DATASOURCE_URL=jdbc:postgresql://neuroforge-postgres:5432/neuroforge_nexus \
+                              -e SPRING_DATASOURCE_USERNAME=postgres \
+                              -e SPRING_DATASOURCE_PASSWORD=kitcoek \
+                              -v "$(pwd)/target:/app/target" \
+                              neuroforge-test-runner \
+                              ./mvn test
+                            '''
                         }
                         recordStage('Test', 'SUCCESS', stageStart)
                     } catch (e) {
                         recordStage('Test', 'FAILED', stageStart)
                         throw e
                     } finally {
-                        dir('Backend') {
-                            junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-                            parseTestSummary()
-                        }
+                        junit allowEmptyResults: true, testResults: 'Backend/target/surefire-reports/*.xml'
+                        parseTestSummary()
                     }
                 }
             }
@@ -152,7 +163,7 @@ pipeline {
                         }
                         sh 'docker rm -f neuroforge-container || true'
                         sh """
-                        docker run -d -p ${DEPLOY_PORT}:9001 --network neuroforge_default \
+                        docker run -d -p ${DEPLOY_PORT}:9000 --network neuroforge_default \
                           -e SPRING_DATASOURCE_URL=jdbc:postgresql://neuroforge-postgres:5432/neuroforge_nexus \
                           -e SPRING_DATASOURCE_USERNAME=postgres \
                           -e SPRING_DATASOURCE_PASSWORD=kitcoek \
