@@ -9,9 +9,6 @@ pipeline {
         CONTROLLER_URL = 'http://host.docker.internal:9000/api/pipelines/webhook'
         PROJECT_ID = '1'
         ENV_NAME = 'STAGING'
-        GIT_MSG = ''
-        GIT_COMMIT = ''
-        GIT_BRANCH_NAME = 'origin/main'
         
         // H2 Database Config
         SPRING_DATASOURCE_URL = 'jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL'
@@ -84,10 +81,13 @@ pipeline {
                 def mappedStatus = (jenkinsStatus == 'FAILURE') ? 'FAILED' : jenkinsStatus
                 def isSuccess = (mappedStatus == 'SUCCESS')
                 def durationSecs = currentBuild.duration ? (currentBuild.duration / 1000).toInteger() : 0
+
+                // Read and parse git-info.txt safely
                 def gitInfo = fileExists('git-info.txt') ? readFile('git-info.txt').trim().split('\\|\\|\\|') : ['unknown', 'origin/main', 'No commit message']
                 def gitHash = gitInfo[0]
-                def gitBranch = gitInfo[1]
-                def gitMsg = gitInfo[2].replaceAll('"', '\\\\"')
+                def gitBranch = gitInfo.size() > 1 ? gitInfo[1] : 'origin/main'
+                def rawMsg = gitInfo.size() > 2 ? gitInfo[2] : 'No commit message'
+                def gitMsg = rawMsg.replaceAll('"', '\\\\"')
 
                 // 2. Fix the Test Parsing Logic
                 def testsPassed = 0
@@ -151,9 +151,9 @@ pipeline {
                     projectId: env.PROJECT_ID.toInteger(),
                     status: mappedStatus,
                     duration: durationSecs,
-                    commitHash: GIT_COMMIT ?: "unknown",
-                    commitMessage: GIT_MSG ?: "No commit message",
-                    branch: GIT_BRANCH_NAME ?: "origin/main",
+                    commitHash: gitHash ?: "unknown",
+                    commitMessage: gitMsg ?: "No commit message",
+                    branch: gitBranch ?: "origin/main",
                     triggerSource: "JENKINS",
                     environment: env.ENV_NAME,
                     deploymentSuccess: isSuccess,
