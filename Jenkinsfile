@@ -182,7 +182,7 @@ pipeline {
                         dir('Backend') {
                             sh 'docker build -t neuroforge-service .'
                         }
-                        sh 'docker rm -f neuroforge-container || true'
+                        sh 'docker rm -f $(docker ps -aq -f name=^neuroforge-container$) || true'
                         sh """
                         docker run -d -p ${DEPLOY_PORT}:9000 --network neuroforge_default \
                           -e SPRING_DATASOURCE_URL=jdbc:postgresql://neuroforge-postgres:5432/neuroforge_nexus \
