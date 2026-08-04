@@ -5,19 +5,23 @@ pipeline {
         maven 'Maven 3'
     }
 
-    environment {
+environment {
         CONTROLLER_URL = 'http://host.docker.internal:9000/api/pipelines/webhook'
         PROJECT_ID = '1'
         ENV_NAME = 'STAGING'
         GIT_MSG = ''
         
-        // Forces Spring Boot tests to use the in-memory H2 database
+        // H2 Database Config
         SPRING_DATASOURCE_URL = 'jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL'
         SPRING_DATASOURCE_DRIVER_CLASS_NAME = 'org.h2.Driver'
         SPRING_DATASOURCE_USERNAME = 'sa'
         SPRING_DATASOURCE_PASSWORD = ''
         SPRING_JPA_DATABASE_PLATFORM = 'org.hibernate.dialect.H2Dialect'
+        
+        // Force Schema Creation and Defer Data Injection
         SPRING_JPA_HIBERNATE_DDL_AUTO = 'create-drop'
+        SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION = 'true'
+        SPRING_SQL_INIT_MODE = 'always'
     }
 
     stages {
