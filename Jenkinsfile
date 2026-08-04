@@ -152,7 +152,7 @@ pipeline {
                         }
                         sh 'docker rm -f neuroforge-container || true'
                         sh """
-                        docker run -d -p ${DEPLOY_PORT}:9000 --network neuroforge_default \
+                        docker run -d -p ${DEPLOY_PORT}:9001 --network neuroforge_default \
                           -e SPRING_DATASOURCE_URL=jdbc:postgresql://neuroforge-postgres:5432/neuroforge_nexus \
                           -e SPRING_DATASOURCE_USERNAME=postgres \
                           -e SPRING_DATASOURCE_PASSWORD=kitcoek \
