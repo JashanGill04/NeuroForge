@@ -31,26 +31,11 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    script {
-                        def rc = sh(script: 'git log -1 --pretty=%B > /tmp/msg.txt 2>/tmp/msg.err; echo $?', returnStdout: true).trim()
-                        def msg = readFile('/tmp/msg.txt').trim()
-                        def err = readFile('/tmp/msg.err').trim()
-                        echo "DEBUG git log exit=${rc} msg=[${msg}] err=[${err}] pwd=${pwd()}"
-                        env.GIT_MSG = msg ? msg.replaceAll('"', '\\\\"') : "No commit message"
+                    def msg = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
+                    def hash = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    def branch = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
 
-                        def rc2 = sh(script: 'git rev-parse HEAD > /tmp/hash.txt 2>/tmp/hash.err; echo $?', returnStdout: true).trim()
-                        def hash = readFile('/tmp/hash.txt').trim()
-                        def herr = readFile('/tmp/hash.err').trim()
-                        echo "DEBUG rev-parse HEAD exit=${rc2} hash=[${hash}] err=[${herr}]"
-                        env.GIT_COMMIT = hash ?: "unknown"
-                    }
-
-                    try {
-                        // 3. Directly grab the active branch name
-                        env.GIT_BRANCH_NAME = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                    } catch (Exception e) {
-                        env.GIT_BRANCH_NAME = "origin/main"
-                    }
+                    writeFile file: 'git-info.txt', text: "${hash}|||${branch}|||${msg}"
                 }
             }
         }
@@ -99,6 +84,10 @@ pipeline {
                 def mappedStatus = (jenkinsStatus == 'FAILURE') ? 'FAILED' : jenkinsStatus
                 def isSuccess = (mappedStatus == 'SUCCESS')
                 def durationSecs = currentBuild.duration ? (currentBuild.duration / 1000).toInteger() : 0
+                def gitInfo = fileExists('git-info.txt') ? readFile('git-info.txt').trim().split('\\|\\|\\|') : ['unknown', 'origin/main', 'No commit message']
+                def gitHash = gitInfo[0]
+                def gitBranch = gitInfo[1]
+                def gitMsg = gitInfo[2].replaceAll('"', '\\\\"')
 
                 // 2. Fix the Test Parsing Logic
                 def testsPassed = 0
