@@ -89,27 +89,33 @@ pipeline {
                 def gitMsg = rawMsg.replaceAll('"', '\\\\"')
 
                 // 2. Fix the Test Parsing Logic
+// 2. Fix the Test Parsing Logic (Safely aggregates multiple XML reports)
                 def testsPassed = 0
                 def testsFailed = 0
                 def testsSkipped = 0
                 
                 try {
                     def testStats = sh(script: '''
-                        grep "<testsuite" Backend/target/surefire-reports/TEST-*.xml | awk '{
-                            tests=0; failures=0; errors=0; skipped=0;
-                            for(i=1;i<=NF;i++) {
-                                if($i ~ /^tests=/) { split($i,a,"\\""); tests=a[2] }
-                                if($i ~ /^failures=/) { split($i,a,"\\""); failures=a[2] }
-                                if($i ~ /^errors=/) { split($i,a,"\\""); errors=a[2] }
-                                if($i ~ /^skipped=/) { split($i,a,"\\""); skipped=a[2] }
+                        awk '
+                            /<testsuite/ {
+                                t=0; f=0; e=0; s=0;
+                                for(i=1;i<=NF;i++) {
+                                    if($i ~ /^tests=/) { split($i,a,"\\""); t=a[2] }
+                                    if($i ~ /^failures=/) { split($i,a,"\\""); f=a[2] }
+                                    if($i ~ /^errors=/) { split($i,a,"\\""); e=a[2] }
+                                    if($i ~ /^skipped=/) { split($i,a,"\\""); s=a[2] }
+                                }
+                                total_tests += t;
+                                total_failures += (f + e);
+                                total_skipped += s;
                             }
-                            print tests","failures+errors","skipped
-                        }' || echo "0,0,0"
+                            END { print total_tests","total_failures","total_skipped }
+                        ' Backend/target/surefire-reports/TEST-*.xml || echo "0,0,0"
                     ''', returnStdout: true).trim().split(',')
                     
-                    def totalTests = testStats[0].toInteger()
-                    testsFailed = testStats[1].toInteger()
-                    testsSkipped = testStats[2].toInteger()
+                    def totalTests = testStats[0] ? testStats[0].toInteger() : 0
+                    testsFailed = testStats[1] ? testStats[1].toInteger() : 0
+                    testsSkipped = testStats[2] ? testStats[2].toInteger() : 0
                     testsPassed = totalTests - testsFailed - testsSkipped
                 } catch (Exception e) {
                     echo "Could not parse test results: ${e.message}"
