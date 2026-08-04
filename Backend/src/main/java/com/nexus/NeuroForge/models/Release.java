@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "releases") // Add this line to bypass SQL reserved keywords
 public class Release {
 
     @Id
