@@ -1,17 +1,18 @@
 package com.nexus.NeuroForge.models;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-
 // [M3][Jashanpreet] Pipeline entity — tracks a CI/CD build run.
-// Linked FROM: Jenkins webhook (POST /api/pipelines/webhook), triggered by GitHub push
+// Linked FROM: GitHub Actions webhook (POST /api/pipelines/webhook)
 // Linked TO: Deployment (1:N) — one pipeline run can deploy to multiple envs
-// STATUS: updated to add project/commit/timing/test fields — review with team
+// STATUS: updated to add project/commit/timing fields — review with team
 
 import com.nexus.NeuroForge.models.interfaces.PipelineStatus;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 @Entity
 public class Pipeline {
@@ -33,20 +34,12 @@ public class Pipeline {
 
     private LocalDateTime finishedAt;
 
-    private int testsTotal;
-
-    private int testsPassed;
-
-    private int testsFailed;
-
-    private int testsSkipped;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Project project;
 
     @OneToMany(mappedBy = "pipeline", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
     private List<Deployment> deployments = new ArrayList<>();
 
     public Pipeline() {}
@@ -72,14 +65,6 @@ public class Pipeline {
     public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
     public LocalDateTime getFinishedAt() { return finishedAt; }
     public void setFinishedAt(LocalDateTime finishedAt) { this.finishedAt = finishedAt; }
-    public int getTestsTotal() { return testsTotal; }
-    public void setTestsTotal(int testsTotal) { this.testsTotal = testsTotal; }
-    public int getTestsPassed() { return testsPassed; }
-    public void setTestsPassed(int testsPassed) { this.testsPassed = testsPassed; }
-    public int getTestsFailed() { return testsFailed; }
-    public void setTestsFailed(int testsFailed) { this.testsFailed = testsFailed; }
-    public int getTestsSkipped() { return testsSkipped; }
-    public void setTestsSkipped(int testsSkipped) { this.testsSkipped = testsSkipped; }
     public Project getProject() { return project; }
     public void setProject(Project project) { this.project = project; }
     public List<Deployment> getDeployments() { return deployments; }

@@ -4,7 +4,6 @@ import { Plus, AlertTriangle, Trash2 } from 'lucide-react'
 import { usersApi } from '../../api/users'
 import { taskService } from '../../services/taskService'
 import { blockerService } from '../../services/blockerService'
-import { setTaskDescription } from '../../services/taskExtras'
 import { useAuth } from '../../context/AuthContext'
 import { canManage } from '../../utils/roles'
 import { Alert, Modal, EmptyState } from '../../components/ui'
@@ -17,7 +16,8 @@ const COLUMNS = [
 ]
 
 export default function Board() {
-  const { project, sprintId, selectedSprint } = useOutletContext()
+  // ADDED sprints, setSprintId HERE
+  const { project, sprints, sprintId, setSprintId, selectedSprint } = useOutletContext()
   const { roles } = useAuth()
   const canEdit = canManage(roles?.[0])
 
@@ -84,19 +84,42 @@ export default function Board() {
     setDragTaskId(null)
   }
 
-  return (
+return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1>{selectedSprint ? selectedSprint.name || 'Board' : 'Board'}</h1>
-          <p className="page-subtitle">{selectedSprint ? `Goal: ${selectedSprint.goal || 'No goal set'}` : 'Pick a sprint from the top bar to see its board.'}</p>
+          <p className="page-subtitle">{selectedSprint ? `Goal: ${selectedSprint.goal || 'No goal set'}` : 'Pick a sprint to see its board.'}</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowCreate(true)} disabled={!sprintId || !canEdit} title={!canEdit ? 'Only Admins and Project Managers can create tasks' : ''}>
-          <Plus size={16} /> New Task
-        </button>
+        
+        {/* ADDED SPRINT SELECTOR ALONGSIDE THE NEW TASK BUTTON */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div className="project-topbar-sprint" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Sprint:</span>
+            <select
+              className="inline-select"
+              value={sprintId || ''}
+              onChange={(e) => setSprintId(e.target.value)}
+              disabled={!sprints || sprints.length === 0}
+            >
+              {(!sprints || sprints.length === 0) && <option value="">No sprints yet</option>}
+              {sprints?.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name ? `${s.name} — ${s.goal}` : s.goal}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <button className="btn-primary" onClick={() => setShowCreate(true)} disabled={!sprintId || !canEdit} title={!canEdit ? 'Only Admins and Project Managers can create tasks' : ''}>
+            <Plus size={16} /> New Task
+          </button>
+        </div>
       </div>
 
       <Alert onClose={() => setError('')}>{error}</Alert>
+      
+      {/* ... (Keep the rest of the file the same) ... */}
 
       {!sprintId ? (
         <EmptyState title="No sprint selected" subtitle="Create a sprint under Sprints & Milestones first." />
@@ -217,9 +240,9 @@ function CreateTaskModal({ users, onClose, onCreated, sprintId }) {
         title: title.trim(),
         points: Number(points),
         assigneeId: assigneeId ? Number(assigneeId) : null,
-        status: 'TODO'
+        status: 'TODO',
+        description: description.trim() // Sends description straight to the backend
       })
-      if (description.trim()) setTaskDescription(task.id, description.trim())
       onCreated(task)
     } catch (err) {
       setError(err.message)

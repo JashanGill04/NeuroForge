@@ -1,6 +1,5 @@
 package com.nexus.NeuroForge.models;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.nexus.NeuroForge.models.interfaces.Role;
 import jakarta.persistence.*;
 
@@ -35,7 +34,6 @@ public class User {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "team_id")
-    @JsonIgnore 
     private Team team;
 
     private boolean active = true;

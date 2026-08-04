@@ -2,19 +2,22 @@ import { useEffect, useState } from 'react'
 import { X, MessageSquare } from 'lucide-react'
 import { taskService } from '../services/taskService'
 import { blockerService } from '../services/blockerService'
-import { getTaskExtras, setTaskDescription, addTaskComment } from '../services/taskExtras'
 import { useAuth } from '../context/AuthContext'
 
 const STATUS_LABEL = { TODO: 'To Do', IN_PROGRESS: 'In Progress', DONE: 'Done' }
 
 export default function TaskDetailModal({ task, sprintId, sprintName, users, canEdit, onClose, onTaskChanged }) {
   const { username } = useAuth()
-  const [extras, setExtras] = useState(() => getTaskExtras(task.id))
-  const [descriptionDraft, setDescriptionDraft] = useState(extras.description)
+
+  const [descriptionDraft, setDescriptionDraft] = useState(task.description || '')
+  const [savingDescription, setSavingDescription] = useState(false)
+  const [descriptionSaved, setDescriptionSaved] = useState(true)
   const [commentDraft, setCommentDraft] = useState('')
   const [activity, setActivity] = useState([])
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
 
   const assignee = users.find((u) => u.id === task.assigneeId)
+  const commentsList = task.comments || []
 
   useEffect(() => {
     let mounted = true
@@ -39,17 +42,47 @@ export default function TaskDetailModal({ task, sprintId, sprintName, users, can
     }
   }, [task.id, task.assigneeId, task.status, sprintId])
 
-  const saveDescription = () => {
-    const entry = setTaskDescription(task.id, descriptionDraft)
-    setExtras({ ...entry })
+  const handleDescriptionChange = (e) => {
+    setDescriptionDraft(e.target.value)
+    setDescriptionSaved(false)
   }
 
-  const submitComment = (e) => {
+  const saveDescription = async () => {
+    if (descriptionDraft === (task.description || '')) {
+      setDescriptionSaved(true)
+      return
+    }
+    setSavingDescription(true)
+    try {
+      const updatedTask = await taskService.updateDescription(task.id, descriptionDraft)
+      onTaskChanged(updatedTask)
+      setDescriptionSaved(true)
+    } catch (error) {
+      console.error('Failed to save description:', error)
+      alert('Failed to save description.')
+    } finally {
+      setSavingDescription(false)
+    }
+  }
+
+  const submitComment = async (e) => {
     e.preventDefault()
     if (!commentDraft.trim()) return
-    addTaskComment(task.id, username || 'you', commentDraft.trim())
-    setExtras({ ...getTaskExtras(task.id) })
-    setCommentDraft('')
+
+    setIsSubmittingComment(true)
+
+    const formattedComment = `${username || 'User'} - ${new Date().toLocaleString()}: ${commentDraft.trim()}`
+
+    try {
+      const updatedTask = await taskService.addComment(task.id, formattedComment)
+      onTaskChanged(updatedTask)
+      setCommentDraft('')
+    } catch (error) {
+      console.error('Failed to add comment:', error)
+      alert('Failed to add comment.')
+    } finally {
+      setIsSubmittingComment(false)
+    }
   }
 
   const changeStatus = async (status) => {
@@ -83,33 +116,43 @@ export default function TaskDetailModal({ task, sprintId, sprintName, users, can
                 className="task-detail-description"
                 rows={4}
                 value={descriptionDraft}
-                onChange={(e) => setDescriptionDraft(e.target.value)}
+                onChange={handleDescriptionChange}
                 onBlur={saveDescription}
                 placeholder="What needs to be done…"
                 disabled={!canEdit}
               />
-              <div className="task-detail-hint">Stored in this browser session only — backend persistence coming soon.</div>
+              <div className="task-detail-hint">
+                {savingDescription
+                  ? 'Saving…'
+                  : descriptionSaved
+                  ? 'Saved'
+                  : 'Unsaved changes — click outside the box to save'}
+              </div>
             </div>
 
             <div className="task-detail-section">
-              <div className="task-detail-label">Comments ({extras.comments.length})</div>
+              <div className="task-detail-label">Comments ({commentsList.length})</div>
               <div className="task-comment-list">
-                {extras.comments.length === 0 && <div className="empty-sub">No comments yet.</div>}
-                {extras.comments.map((c) => (
-                  <div className="task-comment" key={c.id}>
-                    <div className="task-comment-author">{c.author} <span className="task-comment-time">{new Date(c.createdAt).toLocaleString()}</span></div>
-                    <div className="task-comment-text">{c.text}</div>
+                {commentsList.length === 0 && <div className="empty-sub">No comments yet.</div>}
+
+                {commentsList.map((commentString, idx) => (
+                  <div className="task-comment" key={idx}>
+                    <div className="task-comment-text">{commentString}</div>
                   </div>
                 ))}
               </div>
+
               <form className="task-comment-form" onSubmit={submitComment}>
                 <MessageSquare size={15} className="task-comment-icon" />
                 <input
                   placeholder="Add a comment…"
                   value={commentDraft}
                   onChange={(e) => setCommentDraft(e.target.value)}
+                  disabled={isSubmittingComment}
                 />
-                <button type="submit" className="btn-ghost-sm">Post</button>
+                <button type="submit" className="btn-ghost-sm" disabled={isSubmittingComment}>
+                  {isSubmittingComment ? 'Posting...' : 'Post'}
+                </button>
               </form>
             </div>
           </div>

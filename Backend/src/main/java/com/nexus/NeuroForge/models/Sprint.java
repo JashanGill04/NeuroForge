@@ -5,6 +5,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 @Entity
 public class Sprint {
 
@@ -19,6 +22,7 @@ public class Sprint {
 
     @ManyToOne
     @JoinColumn(name = "project_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Project project;
 
     // --- NEW: Link sprint to a milestone ---
@@ -29,6 +33,10 @@ public class Sprint {
 
     @OneToMany(mappedBy = "sprint", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Task> tasks = new ArrayList<>();
+
+// Add this to cascade delete blockers tied to the sprint
+    @OneToMany(mappedBy = "sprint", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Blocker> blockers = new ArrayList<>();
 
     public Sprint() {}
 

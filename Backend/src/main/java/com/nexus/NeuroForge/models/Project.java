@@ -26,11 +26,13 @@ public class Project {
 
     private LocalDate createdAt;
 
+// Add this to cascade delete pipelines tied to the project
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Milestone> milestones = new ArrayList<>();
+    private List<Pipeline> pipelines = new ArrayList<>();
 
+    // Add this to cascade delete all tasks (including backlog tasks) tied to the project
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Sprint> sprints = new ArrayList<>();
+    private List<Task> tasks = new ArrayList<>();
 
     public Project(){}
 

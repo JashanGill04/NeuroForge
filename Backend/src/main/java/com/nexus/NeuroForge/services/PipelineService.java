@@ -20,7 +20,7 @@ public class PipelineService {
     @Autowired private DeploymentRepository deploymentRepository;
     @Autowired private ProjectRepository projectRepository; // assumes this exists already
 
-    // Called by the webhook when Jenkins finishes a build
+    // Called by the webhook when GitHub Actions finishes a build
     public Pipeline recordBuildResult(PipelineWebhookRequest req) {
         Project project = projectRepository.findById(req.getProjectId())
                 .orElseThrow(() -> new IllegalArgumentException("No project found with id " + req.getProjectId()));
@@ -31,10 +31,6 @@ public class PipelineService {
         pipeline.setBranch(req.getBranch());
         pipeline.setStartedAt(LocalDateTime.now().minusSeconds(req.getDuration()));
         pipeline.setFinishedAt(LocalDateTime.now());
-        pipeline.setTestsTotal(req.getTestsTotal());
-        pipeline.setTestsPassed(req.getTestsPassed());
-        pipeline.setTestsFailed(req.getTestsFailed());
-        pipeline.setTestsSkipped(req.getTestsSkipped());
 
         projectRepository.findById(req.getProjectId()).ifPresent(pipeline::setProject);
 
@@ -75,8 +71,7 @@ public class PipelineService {
                 p.getId(), p.getStatus().name(), p.getDuration(), p.getCommitHash(), p.getBranch(),
                 p.getStartedAt(), p.getFinishedAt(),
                 d != null ? d.getEnvironment().name() : null,
-                d != null && d.isSuccess(),
-                p.getTestsTotal(), p.getTestsPassed(), p.getTestsFailed(), p.getTestsSkipped()
+                d != null && d.isSuccess()
         );
     }
 }

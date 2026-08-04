@@ -1,3 +1,4 @@
+// In Reports.jsx
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -8,7 +9,7 @@ import { blockerService } from '../../services/blockerService'
 import { Alert, EmptyState } from '../../components/ui'
 
 export default function Reports() {
-  const { project, sprints, sprintId, selectedSprint } = useOutletContext()
+  const { project, sprints, sprintId, setSprintId, selectedSprint } = useOutletContext()
 
   const [overview, setOverview] = useState(null)
   const [burndown, setBurndown] = useState(null)
@@ -57,16 +58,14 @@ export default function Reports() {
 
       <Alert onClose={() => setError('')}>{error}</Alert>
 
+      {/* --- GLOBAL REPORTS --- */}
       {overview && (
         <div className="stat-grid">
           <div className="stat-card">
             <div className="stat-label">Sprints</div>
             <div className="stat-value">{overview.totalSprints}</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-label">Total tasks</div>
-            <div className="stat-value">{overview.projectTotalTasks}</div>
-          </div>
+          {/* REMOVED TOTAL TASKS FROM HERE */}
           <div className="stat-card">
             <div className="stat-label">Completed tasks</div>
             <div className="stat-value">{overview.projectCompletedTasks}</div>
@@ -101,13 +100,44 @@ export default function Reports() {
         )}
       </div>
 
-      {selectedSprint && (
+      {/* --- SPRINT SELECTOR DIVIDER --- */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '2rem 0 1rem 0' }}>
+        <h2 style={{ margin: 0 }}>Sprint Reports</h2>
+        <div className="project-topbar-sprint" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Sprint:</span>
+          <select
+            className="inline-select"
+            value={sprintId || ''}
+            onChange={(e) => setSprintId(e.target.value)}
+            disabled={!sprints || sprints.length === 0}
+          >
+            {(!sprints || sprints.length === 0) && <option value="">No sprints yet</option>}
+            {sprints?.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name ? `${s.name} — ${s.goal}` : s.goal}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* --- SPRINT SPECIFIC REPORTS --- */}
+      {!selectedSprint ? (
+          <EmptyState title="Select a sprint above to view burndown and metrics" />
+      ) : (
         <>
           <div className="stat-grid">
             <div className="stat-card">
               <div className="stat-label">Days remaining</div>
               <div className="stat-value">{Math.max(0, Math.ceil((new Date(selectedSprint.endDate) - new Date()) / 86400000))}</div>
             </div>
+            
+            {/* ADDED TOTAL TASKS HERE */}
+            <div className="stat-card">
+              <div className="stat-label">Total tasks</div>
+              <div className="stat-value">{sprintTasks.length}</div>
+            </div>
+
             <div className="stat-card">
               <div className="stat-label">Points done / total</div>
               <div className="stat-value stat-value-sm">{sprintTasks.filter((t) => t.status === 'DONE').reduce((s, t) => s + (t.points || 0), 0)} / {sprintTasks.reduce((s, t) => s + (t.points || 0), 0)}</div>

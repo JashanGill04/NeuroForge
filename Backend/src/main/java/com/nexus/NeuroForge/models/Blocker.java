@@ -5,6 +5,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 @Entity
 @Table(name = "blockers")
 public class Blocker {
@@ -20,6 +23,7 @@ public class Blocker {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sprint_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     @JsonIgnore // Prevents nested JSON loops when sending to React
     private Sprint sprint;
 

@@ -1,3 +1,4 @@
+// src/components/ProjectLayout.jsx (or wherever this is located)
 import { NavLink, Outlet, useParams, Link } from 'react-router-dom'
 import {
   ChevronLeft, KanbanSquare, ListTodo, CalendarRange,
@@ -15,8 +16,6 @@ const projectNavItems = [
   { to: 'settings', label: 'Settings', Icon: Settings }
 ]
 
-// Milestone 3 interfaces live ONLY in the project sidebar (per the revised
-// UI restructure handoff, item 4) — never in the workspace-level sidebar.
 const milestone3NavItems = [
   { to: 'pipeline', label: 'Pipeline & Deployments', Icon: Rocket }
 ]
@@ -24,6 +23,7 @@ const milestone3NavItems = [
 export default function ProjectLayout() {
   const { projectId } = useParams()
   const projectCtx = useProject(projectId)
+  // Ensure we still expose the context for the children
   const { project, sprints, sprintId, setSprintId, loading, error } = projectCtx
 
   return (
@@ -59,7 +59,7 @@ export default function ProjectLayout() {
           ))}
         </nav>
 
-        <div className="nav-section-label">Milestone 3 · CI/CD</div>
+        <div className="nav-section-label">CI/CD</div>
         <nav className="nav-list">
           {milestone3NavItems.map((item) => (
             <NavLink
@@ -77,22 +77,7 @@ export default function ProjectLayout() {
       <div className="app-main-col">
         <header className="topbar project-topbar">
           {project && <StatusBadge status={project.status} />}
-          <div className="project-topbar-sprint">
-            <span>Sprint</span>
-            <select
-              className="inline-select"
-              value={sprintId}
-              onChange={(e) => setSprintId(e.target.value)}
-              disabled={sprints.length === 0}
-            >
-              {sprints.length === 0 && <option value="">No sprints yet</option>}
-              {sprints.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name ? `${s.name} — ${s.goal}` : s.goal}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* SPRINT DROPDOWN REMOVED FROM HERE */}
         </header>
         <main className="main-content">
           {!loading && !project ? (

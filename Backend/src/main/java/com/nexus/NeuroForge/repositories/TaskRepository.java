@@ -7,8 +7,13 @@ import java.util.List;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
-    
+
     List<Task> findBySprintId(Long sprintId);
     List<Task> findBySprintProjectId(Long projectId);
-    
+
+    // NEW: backlog tasks have sprint == null, so they can't be found via
+    // findBySprintProjectId (that navigates Task -> sprint -> project, which is
+    // null for an unscheduled task). This uses Task.projectId directly instead.
+    List<Task> findByProjectIdAndSprintIsNull(Long projectId);
+
 }
