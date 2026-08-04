@@ -18,8 +18,17 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    // Capture the commit message safely
-                    env.GIT_MSG = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
+                    // Safely fetch commit message using Jenkins native changeSets
+                    def commitMsg = ""
+                    def changeLogSets = currentBuild.changeSets
+                    if (changeLogSets != null && changeLogSets.size() > 0) {
+                        def entries = changeLogSets[0].items
+                        if (entries != null && entries.length > 0) {
+                            commitMsg = entries[entries.length - 1].msg
+                        }
+                    }
+                    // Fallback to a default if it's a manual build with no new commits
+                    env.GIT_MSG = commitMsg ?: "Manual build (no new commits)"
                 }
             }
         }
