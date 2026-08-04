@@ -2,15 +2,29 @@
 package com.nexus.NeuroForge.dto;
 
 import com.nexus.NeuroForge.models.interfaces.PipelineStatus;
+import com.nexus.NeuroForge.models.interfaces.TriggerSource;
+import com.nexus.NeuroForge.models.interfaces.PipelineStatus;
+import com.nexus.NeuroForge.models.interfaces.StageStatus;
+import com.nexus.NeuroForge.models.interfaces.TriggerSource;
+import java.util.List;
 
 public class PipelineWebhookRequest {
     private Long projectId;
     private PipelineStatus status;
     private int duration;
     private String commitHash;
+    private String commitMessage;
     private String branch;
-    private String environment; // matches DeploymentEnvironment
+    private String environment;
     private boolean deploymentSuccess;
+    private TriggerSource triggerSource;
+
+    private List<StageDTO> stages;
+    private TestSummaryDTO testSummary;
+    private DeploymentInfoDTO deploymentInfo;
+
+
+
 
     // getters/setters
     public Long getProjectId() { return projectId; }
@@ -27,4 +41,51 @@ public class PipelineWebhookRequest {
     public void setEnvironment(String environment) { this.environment = environment; }
     public boolean isDeploymentSuccess() { return deploymentSuccess; }
     public void setDeploymentSuccess(boolean deploymentSuccess) { this.deploymentSuccess = deploymentSuccess; }
+    public String getCommitMessage() { return commitMessage; }
+    public void setCommitMessage(String commitMessage) { this.commitMessage = commitMessage; }
+    public TriggerSource getTriggerSource() { return triggerSource; }
+    public void setTriggerSource(TriggerSource triggerSource) { this.triggerSource = triggerSource; }
+    public List<StageDTO> getStages() { return stages; }
+    public void setStages(List<StageDTO> stages) { this.stages = stages; }
+    public TestSummaryDTO getTestSummary() { return testSummary; }
+    public void setTestSummary(TestSummaryDTO testSummary) { this.testSummary = testSummary; }
+    public DeploymentInfoDTO getDeploymentInfo() { return deploymentInfo; }
+    public void setDeploymentInfo(DeploymentInfoDTO deploymentInfo) { this.deploymentInfo = deploymentInfo; }
+
+
+
+
+
+    public static class StageDTO {
+        public String name;
+        public StageStatus status;
+        public int durationSeconds;
+    }
+
+  public static class TestSummaryDTO {
+    public int passed;
+    public int failed;
+    public int skipped;
+    public double coveragePercent;
 }
+
+    public static class DeploymentInfoDTO {
+        public String imageTag;
+        public int podsRunning;
+        public int podsTotal;
+        public double cpuPercent;
+        public double memoryPercent;
+    }
+
+
+
+
+
+
+
+
+
+
+}
+
+

@@ -15,7 +15,6 @@ public class PipelineController {
 
     @Autowired private PipelineService pipelineService;
 
-    // Called by GitHub Actions after build/test/deploy step
     @PostMapping("/webhook")
     public Pipeline receiveBuildResult(@RequestBody PipelineWebhookRequest request) {
         return pipelineService.recordBuildResult(request);
@@ -30,4 +29,8 @@ public class PipelineController {
     public PipelineKpiDTO getKpis() {
         return pipelineService.getKpis();
     }
+    @GetMapping("/{id}")
+public PipelineDetailDTO getDetail(@PathVariable Long id) {
+    return pipelineService.getDetail(id);
+}
 }

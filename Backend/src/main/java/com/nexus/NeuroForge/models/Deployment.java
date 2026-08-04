@@ -13,9 +13,65 @@ import java.time.LocalDateTime;
 @Entity
 public class Deployment {
 
+    public String getImageTag() {
+        return imageTag;
+    }
+
+    public void setImageTag(String imageTag) {
+        this.imageTag = imageTag;
+    }
+
+    public int getPodsRunning() {
+        return podsRunning;
+    }
+
+    public void setPodsRunning(int podsRunning) {
+        this.podsRunning = podsRunning;
+    }
+
+    public int getPodsTotal() {
+        return podsTotal;
+    }
+
+    public void setPodsTotal(int podsTotal) {
+        this.podsTotal = podsTotal;
+    }
+
+    public double getCpuPercent() {
+        return cpuPercent;
+    }
+
+    public void setCpuPercent(double cpuPercent) {
+        this.cpuPercent = cpuPercent;
+    }
+
+    public double getMemoryPercent() {
+        return memoryPercent;
+    }
+
+    public void setMemoryPercent(double memoryPercent) {
+        this.memoryPercent = memoryPercent;
+    }
+
+    public boolean isRollbackEligible() {
+        return rollbackEligible;
+    }
+
+    public void setRollbackEligible(boolean rollbackEligible) {
+        this.rollbackEligible = rollbackEligible;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    // add these fields alongside existing ones
+private String imageTag;
+private int podsRunning;
+private int podsTotal;
+private double cpuPercent;
+private double memoryPercent;
+private boolean rollbackEligible;
 
     @Enumerated(EnumType.STRING)
     private DeploymentEnvironment environment;
