@@ -138,7 +138,7 @@ pipeline {
                               -e SPRING_DATASOURCE_PASSWORD=kitcoek \
                               -v "$(pwd)/target:/app/target" \
                               neuroforge-test-runner \
-                              ./mvn test
+                              ./mvnw test
                             '''
                         }
                         recordStage('Test', 'SUCCESS', stageStart)
