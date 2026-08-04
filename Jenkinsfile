@@ -10,6 +10,8 @@ pipeline {
         PROJECT_ID = '1'
         ENV_NAME = 'STAGING'
         GIT_MSG = ''
+        GIT_COMMIT = ''
+        GIT_BRANCH_NAME = 'origin/main'
         
         // H2 Database Config
         SPRING_DATASOURCE_URL = 'jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL'
@@ -30,19 +32,25 @@ pipeline {
                 checkout scm
                 script {
                     try {
-                        // 1. Directly ask Git for the actual commit message
+                        // 1. Directly fetch the latest commit message via shell and escape double quotes
                         def rawCommitMsg = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
-                        // Escape double quotes so it doesn't break our JSON payload later!
-                        env.GIT_MSG = rawCommitMsg.replaceAll('"', '\\\\"')
+                        env.GIT_MSG = rawCommitMsg ? rawCommitMsg.replaceAll('"', '\\\\"') : "No commit message"
                     } catch (Exception e) {
                         env.GIT_MSG = "Manual build (no new commits)"
                     }
 
                     try {
-                        // 2. Safely grab the exact commit Hash too, just in case Jenkins misses it
+                        // 2. Directly grab the exact commit hash
                         env.GIT_COMMIT = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
                     } catch (Exception e) {
                         env.GIT_COMMIT = "unknown"
+                    }
+
+                    try {
+                        // 3. Directly grab the active branch name
+                        env.GIT_BRANCH_NAME = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    } catch (Exception e) {
+                        env.GIT_BRANCH_NAME = "origin/main"
                     }
                 }
             }
@@ -51,7 +59,6 @@ pipeline {
         stage('Build Jar') {
             steps {
                 dir('Backend') {
-                    // Note: Tests are skipped here, so test metrics in the payload are mocked
                     sh 'mvn clean test jacoco:report package'
                 }
             }
@@ -100,7 +107,6 @@ pipeline {
                 def testsSkipped = 0
                 
                 try {
-                    // Safer parsing that explicitly looks for attribute names regardless of order
                     def testStats = sh(script: '''
                         grep "<testsuite" Backend/target/surefire-reports/TEST-*.xml | awk '{
                             tests=0; failures=0; errors=0; skipped=0;
@@ -128,7 +134,6 @@ pipeline {
                     def covString = sh(script: '''
                         awk -F"," '{ instructions += $4 + $5; covered += $5 } END { if (instructions > 0) print (covered/instructions)*100; else print 0 }' Backend/target/site/jacoco/jacoco.csv || echo "0.0"
                     ''', returnStdout: true).trim()
-                    // Removed .round(2) to comply with Jenkins Sandbox security
                     coverageVal = covString.toDouble()
                 } catch (Exception e) {
                     echo "Could not parse coverage: ${e.message}"
@@ -160,7 +165,7 @@ pipeline {
                     duration: durationSecs,
                     commitHash: env.GIT_COMMIT ?: "unknown",
                     commitMessage: env.GIT_MSG ?: "No commit message",
-                    branch: env.BRANCH_NAME ?: "origin/main",
+                    branch: env.GIT_BRANCH_NAME ?: "origin/main",
                     triggerSource: "JENKINS",
                     environment: env.ENV_NAME,
                     deploymentSuccess: isSuccess,
