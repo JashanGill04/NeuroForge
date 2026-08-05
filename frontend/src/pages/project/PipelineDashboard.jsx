@@ -66,7 +66,8 @@ export default function PipelineDashboard() {
     }
   }, [selectedBuildId])
 
-  // Lock background scroll while the modal is open
+  // Lock background scroll while the modal is open so the page behind it
+  // can't shift/scroll and cause the flicker when the scrollbar appears.
   useEffect(() => {
     if (selectedBuildId) {
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
@@ -83,33 +84,6 @@ export default function PipelineDashboard() {
     }
   }, [selectedBuildId])
 
-
-const [isTriggering, setIsTriggering] = useState(false);
-  const [isRollingBack, setIsRollingBack] = useState(false);
-
-  const handleTriggerBuild = () => {
-    setIsTriggering(true);
-    // Assuming projectId 1 for demo purposes
-    pipelineService.triggerBuild(1, 'main')
-      .then((newBuild) => {
-        setBuilds(prev => [newBuild, ...prev]);
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setIsTriggering(false));
-  };
-
-  const handleRollback = (id) => {
-    setIsRollingBack(true);
-    pipelineService.triggerRollback(id)
-      .then(() => {
-        alert('Rollback initiated successfully!');
-        setSelectedBuildId(null);
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setIsRollingBack(false));
-  };
-
-
   return (
     <div className="page">
       <div className="page-header">
@@ -119,17 +93,6 @@ const [isTriggering, setIsTriggering] = useState(false);
             CI/CD build history and deployment status across all projects.
           </p>
         </div>
-        <button 
-          className="btn-primary" 
-          onClick={handleTriggerBuild}
-          disabled={isTriggering}
-        >
-          {isTriggering ? <Loader2 size={16} className="spinner" /> : <Activity size={16} />}
-          {isTriggering ? 'Starting...' : 'Trigger Build'}
-        </button>
-
-
-
       </div>
 
       {error && <Alert onClose={() => setError('')}>{error}</Alert>}
@@ -214,9 +177,17 @@ const [isTriggering, setIsTriggering] = useState(false);
 
       {/* Details Modal */}
       {selectedBuildId && (
-        <div className="modal-overlay" onClick={() => setSelectedBuildId(null)}>
-          <div className="modal bd-modal" style={{ maxWidth: '900px', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
-            
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div className="panel bd-modal" style={{
+            width: '100%', maxWidth: '900px', maxHeight: '90vh',
+            display: 'flex', flexDirection: 'column', margin: 0, overflow: 'hidden',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)', padding: 0
+          }}>
+
             {/* Modal Header */}
             <div className="bd-header">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -226,18 +197,6 @@ const [isTriggering, setIsTriggering] = useState(false);
                     style={{ background: STATUS_BADGE[buildDetails?.status]?.dot || 'var(--info)' }}
                   />
                   <h2 className="bd-title">Build #{selectedBuildId} Details</h2>
-                {/* NEW ROLLBACK BUTTON */}
-                  {buildDetails?.deployment?.rollbackEligible && (
-                    <button 
-                      className="btn-ghost-sm" 
-                      style={{ marginLeft: '12px', color: 'var(--hold)', borderColor: 'var(--hold-soft)' }}
-                      onClick={() => handleRollback(buildDetails.id)}
-                      disabled={isRollingBack}
-                    >
-                      {isRollingBack ? 'Rolling back...' : 'Redeploy / Rollback'}
-                    </button>
-                  )}
-                  
                 </div>
                 <div className="bd-subtitle">
                   <FolderKanban size={13} /> Project: {buildDetails?.projectName || 'NeuroForge Nexus'}
@@ -249,11 +208,11 @@ const [isTriggering, setIsTriggering] = useState(false);
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ padding: '24px', overflowY: 'auto', scrollbarGutter: 'stable', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {loadingDetails || !buildDetails ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>
-                  <Loader2 size={32} style={{ margin: '0 auto 16px auto', opacity: 0.5, animation: 'spin 1s linear infinite' }} />
-                  <p style={{ color: 'var(--ink-soft)' }}>Fetching full pipeline data...</p>
+                  <Loader2 size={32} style={{ margin: '0 auto 16px auto', opacity: 0.5 }} />
+                  <p>Fetching full pipeline data...</p>
                 </div>
               ) : (
                 <>
@@ -397,7 +356,7 @@ const [isTriggering, setIsTriggering] = useState(false);
                             </div>
                             <div className="bd-deploy-row bd-deploy-row-stacked">
                               <span className="bd-deploy-label"><Cpu size={14} /> Resource Load</span>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '160px' }}>
                                 <div className="bd-resource-line">
                                   <span>CPU</span><span>{buildDetails.deployment.cpuPercent}%</span>
                                 </div>

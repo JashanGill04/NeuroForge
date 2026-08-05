@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // PipelineService — wired to the real backend (Milestone 3)
 // ---------------------------------------------------------------------------
-//   GET /api/pipelines      -> PipelineResponse[]   (build history)
+//   GET /api/pipelines      -> PipelineResponse[]  (build history)
 //   GET /api/pipelines/kpi  -> PipelineKpiDTO       (stat cards)
 //   GET /api/pipelines/{id} -> PipelineDetailDTO    (build details)
 // Note: these endpoints return build history across ALL projects — the
@@ -14,11 +14,5 @@ import client from '../api/client'
 export const pipelineService = {
   getHistory: () => client.get('/pipelines').then((r) => r.data),
   getKpis: () => client.get('/pipelines/kpi').then((r) => r.data),
-  getDetail: (id) => client.get(`/pipelines/${id}`).then((r) => r.data),
-
-  triggerBuild: (projectId = 1, branch = 'main') => 
-    client.post(`/pipelines/trigger?projectId=${projectId}&branch=${branch}`).then((r) => r.data),
-
-  triggerRollback: (pipelineId) => 
-    client.post(`/pipelines/${pipelineId}/rollback`).then((r) => r.data)
+  getDetail: (id) => client.get(`/pipelines/${id}`).then((r) => r.data)
 }
