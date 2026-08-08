@@ -179,4 +179,40 @@ dto.tests = testInfo;
                 d != null && d.isSuccess()
         );
     }
+
+    // Add these methods to your existing PipelineService.java
+
+    public void triggerJenkinsBuild(Long projectId) {
+        // 1. Verify project exists
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("No project found with id " + projectId));
+
+        // 2. Call Jenkins REST API to start the job
+        // Example using RestTemplate:
+        // String jenkinsUrl = "http://localhost:8080/job/NeuroForge/build";
+        // restTemplate.postForEntity(jenkinsUrl, null, String.class);
+
+        // Note: If you want automated triggers from source control, ensure your repository
+        // (e.g., https://github.com/RajanGill04/your-repo-name) is configured to send
+        // webhooks directly to Jenkins or to this Spring Boot service.
+    }
+
+    public void executeRollback(Long pipelineId) {
+        // 1. Fetch the pipeline and its deployment details
+        Pipeline pipeline = pipelineRepository.findById(pipelineId)
+                .orElseThrow(() -> new IllegalArgumentException("Pipeline not found"));
+
+        // 2. Ensure deployment is rollback eligible
+        Deployment deployment = pipeline.getDeployments().get(pipeline.getDeployments().size() - 1);
+        if (!deployment.isRollbackEligible()) {
+            throw new IllegalStateException("This deployment is not eligible for rollback.");
+        }
+
+        // 3. Trigger rollback (e.g., call a specific Jenkins job with the older imageTag)
+        // String imageTag = deployment.getImageTag();
+        // triggerJenkinsRollbackJob(imageTag);
+    }
+
+
+
 }

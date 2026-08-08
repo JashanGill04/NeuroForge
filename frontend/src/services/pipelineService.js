@@ -14,5 +14,7 @@ import client from '../api/client'
 export const pipelineService = {
   getHistory: () => client.get('/pipelines').then((r) => r.data),
   getKpis: () => client.get('/pipelines/kpi').then((r) => r.data),
-  getDetail: (id) => client.get(`/pipelines/${id}`).then((r) => r.data)
+  getDetail: (id) => client.get(`/pipelines/${id}`).then((r) => r.data),
+  triggerBuild: (projectId) => client.post(`/pipelines/trigger/${projectId}`).then((r) => r.data),
+  rollbackBuild: (pipelineId) => client.post(`/pipelines/${pipelineId}/rollback`).then((r) => r.data)
 }

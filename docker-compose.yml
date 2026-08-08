@@ -17,20 +17,7 @@ services:
       retries: 5
       start_period: 30s
 
-  jenkins:
-    build:
-      context: .
-      dockerfile: Dockerfile.jenkins
-    container_name: jenkins
-    ports:
-      - "9090:8080"
-      - "50000:50000"
-    volumes:
-      - jenkins_volumes:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-    user: root 
-    environment:
-      - JAVA_OPTS="-Dhudson.security.csrf.GlobalCrumbIssuerConfiguration.DISABLE_CSRF_PROTECTION=true"
+
 
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
@@ -117,4 +104,3 @@ volumes:
   postgres_data:
   keycloak_data:
   kafka_data:
-  jenkins_volumes:
