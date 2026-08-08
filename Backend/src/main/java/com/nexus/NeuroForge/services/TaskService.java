@@ -1,7 +1,8 @@
 package com.nexus.NeuroForge.services;
 
 import com.nexus.NeuroForge.dto.TaskRequest;
-import com.nexus.NeuroForge.events.TaskEvent;
+// KAFKA DISABLED: TaskEvent import unused now that publishing is commented out below.
+// import com.nexus.NeuroForge.events.TaskEvent;
 import com.nexus.NeuroForge.models.Project;
 import com.nexus.NeuroForge.models.Sprint;
 import com.nexus.NeuroForge.models.Task;
@@ -21,8 +22,15 @@ public class TaskService {
     private final SprintRepository sprintRepository;
     private final ProjectRepository projectRepository;
 
+    // KAFKA DISABLED: kafkaProducer temporarily removed. Uncomment to re-enable Kafka publishing.
+    // @Autowired
+    // private KafkaProducerService kafkaProducer;
+
+    // NOTIFICATION FIX: KafkaConsumerService used to be the only place that turned a
+    // TaskEvent into a saved Notification row. With Kafka disabled that consumer never
+    // runs, so notification creation is now delegated directly to NotificationService instead.
     @Autowired
-    private KafkaProducerService kafkaProducer;
+    private NotificationService notificationService;
 
     public TaskService(TaskRepository taskRepository, SprintRepository sprintRepository, ProjectRepository projectRepository) {
         this.taskRepository = taskRepository;
@@ -43,13 +51,13 @@ public class TaskService {
             Sprint sprint = sprintRepository.findById(request.getSprintId())
                     .orElseThrow(() -> new RuntimeException("Sprint not found"));
             task.setSprint(sprint);
-            
+
             if (sprint.getProject() == null) {
                 throw new RuntimeException("Sprint " + sprint.getId() + " has no project set");
             }
             // FIXED: Set the actual Project entity from the sprint
-            task.setProject(sprint.getProject()); 
-            
+            task.setProject(sprint.getProject());
+
         } else {
             if (request.getProjectId() == null) {
                 throw new RuntimeException("projectId is required when creating a task without a sprint");
@@ -66,13 +74,19 @@ public class TaskService {
 
         Task savedTask = taskRepository.save(task);
 
+        // KAFKA DISABLED: task-assigned event publishing temporarily removed.
+        // if (savedTask.getAssigneeId() != null) {
+        //     TaskEvent event = new TaskEvent(
+        //             savedTask.getId().toString(),
+        //             "TASK_ASSIGNED",
+        //             "You were assigned to a new task: " + savedTask.getTitle()
+        //     );
+        //     kafkaProducer.publishTaskEvent(event);
+        // }
+
+        // NOTIFICATION FIX: direct replacement for the block above.
         if (savedTask.getAssigneeId() != null) {
-            TaskEvent event = new TaskEvent(
-                    savedTask.getId().toString(),
-                    "TASK_ASSIGNED",
-                    "You were assigned to a new task: " + savedTask.getTitle()
-            );
-            kafkaProducer.publishTaskEvent(event);
+            notificationService.createNotification(savedTask, "TASK_ASSIGNED", "You were assigned to a new task: " + savedTask.getTitle());
         }
 
         return savedTask;
@@ -93,12 +107,16 @@ public class TaskService {
         task.setSprint(sprint);
         Task updatedTask = taskRepository.save(task);
 
-        TaskEvent event = new TaskEvent(
-                updatedTask.getId().toString(),
-                "TASK_SCHEDULED",
-                "Task " + updatedTask.getTitle() + " was added to sprint " + sprint.getName()
-        );
-        kafkaProducer.publishTaskEvent(event);
+        // KAFKA DISABLED: task-scheduled event publishing temporarily removed.
+        // TaskEvent event = new TaskEvent(
+        //         updatedTask.getId().toString(),
+        //         "TASK_SCHEDULED",
+        //         "Task " + updatedTask.getTitle() + " was added to sprint " + sprint.getName()
+        // );
+        // kafkaProducer.publishTaskEvent(event);
+
+        // NOTIFICATION FIX: direct replacement for the block above.
+        notificationService.createNotification(updatedTask, "TASK_SCHEDULED", "Task " + updatedTask.getTitle() + " was added to sprint " + sprint.getName());
 
         return updatedTask;
     }
@@ -124,8 +142,13 @@ public class TaskService {
         }
 
         Task updatedTask = taskRepository.save(task);
-        TaskEvent event = new TaskEvent(updatedTask.getId().toString(), "TASK_STATUS_UPDATED", "Task " + updatedTask.getTitle() + " is now " + newStatus);
-        kafkaProducer.publishTaskEvent(event);
+
+        // KAFKA DISABLED: task-status-updated event publishing temporarily removed.
+        // TaskEvent event = new TaskEvent(updatedTask.getId().toString(), "TASK_STATUS_UPDATED", "Task " + updatedTask.getTitle() + " is now " + newStatus);
+        // kafkaProducer.publishTaskEvent(event);
+
+        // NOTIFICATION FIX: direct replacement for the block above.
+        notificationService.createNotification(updatedTask, "TASK_STATUS_UPDATED", "Task " + updatedTask.getTitle() + " is now " + newStatus);
 
         return updatedTask;
     }
@@ -137,8 +160,13 @@ public class TaskService {
         task.getComments().add(comment);
 
         Task updatedTask = taskRepository.save(task);
-        TaskEvent event = new TaskEvent(updatedTask.getId().toString(), "TASK_COMMENT_ADDED", "New comment added to Task: " + updatedTask.getTitle());
-        kafkaProducer.publishTaskEvent(event);
+
+        // KAFKA DISABLED: task-comment-added event publishing temporarily removed.
+        // TaskEvent event = new TaskEvent(updatedTask.getId().toString(), "TASK_COMMENT_ADDED", "New comment added to Task: " + updatedTask.getTitle());
+        // kafkaProducer.publishTaskEvent(event);
+
+        // NOTIFICATION FIX: direct replacement for the block above.
+        notificationService.createNotification(updatedTask, "TASK_COMMENT_ADDED", "New comment added to Task: " + updatedTask.getTitle());
 
         return updatedTask;
     }
@@ -161,12 +189,16 @@ public class TaskService {
         task.setAssigneeId(userId);
         Task savedTask = taskRepository.save(task);
 
-        TaskEvent event = new TaskEvent(
-                savedTask.getId().toString(),
-                "TASK_ASSIGNED",
-                "You were assigned to task: " + savedTask.getTitle()
-        );
-        kafkaProducer.publishTaskEvent(event);
+        // KAFKA DISABLED: task-assigned event publishing temporarily removed.
+        // TaskEvent event = new TaskEvent(
+        //         savedTask.getId().toString(),
+        //         "TASK_ASSIGNED",
+        //         "You were assigned to task: " + savedTask.getTitle()
+        // );
+        // kafkaProducer.publishTaskEvent(event);
+
+        // NOTIFICATION FIX: direct replacement for the block above.
+        notificationService.createNotification(savedTask, "TASK_ASSIGNED", "You were assigned to task: " + savedTask.getTitle());
 
         return savedTask;
     }

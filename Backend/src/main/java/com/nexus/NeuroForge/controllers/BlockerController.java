@@ -1,13 +1,14 @@
 package com.nexus.NeuroForge.controllers;
 
-import com.nexus.NeuroForge.events.TaskEvent;
+// import com.nexus.NeuroForge.events.TaskEvent;
 import com.nexus.NeuroForge.models.Blocker;
 import com.nexus.NeuroForge.models.Sprint;
 import com.nexus.NeuroForge.models.Task;
 import com.nexus.NeuroForge.repositories.BlockerRepository;
 import com.nexus.NeuroForge.repositories.SprintRepository;
 import com.nexus.NeuroForge.repositories.TaskRepository;
-import com.nexus.NeuroForge.services.KafkaProducerService;
+// import com.nexus.NeuroForge.services.KafkaProducerService;
+import com.nexus.NeuroForge.services.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,8 +27,15 @@ public class BlockerController {
     @Autowired
     private TaskRepository taskRepository; // Injected to update task status
 
+    // @Autowired
+    // private KafkaProducerService kafkaProducer;
+
+    // NOTIFICATION FIX: KafkaConsumerService used to be the only place that turned a
+    // TaskEvent into a saved Notification row. With Kafka disabled that consumer never
+    // runs, so notification creation for blocker events is now delegated directly to
+    // NotificationService instead.
     @Autowired
-    private KafkaProducerService kafkaProducer;
+    private NotificationService notificationService;
 
     @GetMapping
     public List<Blocker> getBlockers(@PathVariable Long sprintId) {
@@ -48,12 +56,15 @@ public class BlockerController {
         task.setIsBlocked(true);
         taskRepository.save(task);
 
-        TaskEvent event = new TaskEvent(
-                savedBlocker.getTaskId().toString(),
-                "BLOCKER_RAISED",
-                "A blocker was raised on task: " + savedBlocker.getTaskTitle()
-        );
-        kafkaProducer.publishTaskEvent(event);
+        // TaskEvent event = new TaskEvent(
+        //         savedBlocker.getTaskId().toString(),
+        //         "BLOCKER_RAISED",
+        //         "A blocker was raised on task: " + savedBlocker.getTaskTitle()
+        // );
+        // kafkaProducer.publishTaskEvent(event);
+
+        // NOTIFICATION FIX: direct replacement for the block above.
+        notificationService.createNotification(task, "BLOCKER_RAISED", "A blocker was raised on task: " + savedBlocker.getTaskTitle());
 
         return savedBlocker;
     }
@@ -73,13 +84,16 @@ public class BlockerController {
             taskRepository.save(task);
         }
 
-        // OPTIONAL KAFKA POLISH: Tell the team the task is ready to be worked on again
-        TaskEvent event = new TaskEvent(
-                savedBlocker.getTaskId().toString(),
-                "BLOCKER_RESOLVED",
-                "The blocker on task was resolved: " + savedBlocker.getTaskTitle()
-        );
-        kafkaProducer.publishTaskEvent(event);
+        // // OPTIONAL KAFKA POLISH: Tell the team the task is ready to be worked on again
+        // TaskEvent event = new TaskEvent(
+        //         savedBlocker.getTaskId().toString(),
+        //         "BLOCKER_RESOLVED",
+        //         "The blocker on task was resolved: " + savedBlocker.getTaskTitle()
+        // );
+        // kafkaProducer.publishTaskEvent(event);
+
+        // NOTIFICATION FIX: direct replacement for the block above.
+        notificationService.createNotification(task, "BLOCKER_RESOLVED", "The blocker on task was resolved: " + savedBlocker.getTaskTitle());
 
         return savedBlocker;
     }
