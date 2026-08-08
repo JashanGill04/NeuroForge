@@ -43,7 +43,7 @@ public class PipelineController {
         return ResponseEntity.ok("Pipeline triggered successfully");
     }
 
-    // NEW: Endpoint to rollback a specific deployment
+    // NEW: Endpoint to Rollback a specific deployment
     @PostMapping("/{pipelineId}/rollback")
     public ResponseEntity<String> rollbackDeployment(@PathVariable Long pipelineId) {
         pipelineService.executeRollback(pipelineId);
