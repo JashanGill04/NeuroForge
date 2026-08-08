@@ -20,6 +20,7 @@ import {
   Tag,
   FolderKanban,
   Pencil,
+  RotateCcw,
 } from "lucide-react";
 import { pipelineService } from "../../services/pipelineService";
 import { Alert, EmptyState } from "../../components/ui";
@@ -637,17 +638,35 @@ export default function PipelineDashboard() {
                               display: "flex",
                               justifyContent: "space-between",
                               alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: "10px",
                             }}
                           >
-                            <h3 className="bd-section-title">
+                            <h3
+                              className="bd-section-title"
+                              style={{ margin: 0 }}
+                            >
                               <Box size={14} /> Post-Build Deployment Status
                             </h3>
                             {buildDetails.deployment.rollbackEligible && (
                               <button
                                 onClick={() => handleRollback(buildDetails.id)}
-                                className="btn btn-danger btn-sm"
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  padding: "6px 12px",
+                                  fontSize: "0.8rem",
+                                  fontWeight: 600,
+                                  whiteSpace: "nowrap",
+                                  borderRadius: "8px",
+                                  border: "1px solid var(--danger)",
+                                  background: "var(--danger-soft)",
+                                  color: "var(--danger)",
+                                  cursor: "pointer",
+                                }}
                               >
-                                Rollback to this version
+                                <RotateCcw size={13} /> Rollback
                               </button>
                             )}
                           </div>

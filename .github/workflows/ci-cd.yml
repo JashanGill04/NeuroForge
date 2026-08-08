@@ -134,6 +134,22 @@ jobs:
           echo "API failed to start in time."
           exit 1
 
+      - name: Collect container stats
+        id: stats
+        if: always()
+        run: |
+          RUNNING=$(docker inspect -f '{{.State.Running}}' neuroforge-container 2>/dev/null || echo "false")
+          if [ "$RUNNING" = "true" ]; then
+            RAW=$(docker stats neuroforge-container --no-stream --format "{{.CPUPerc}},{{.MemPerc}}" | tr -d '%')
+            echo "cpu=$(echo $RAW | cut -d',' -f1)" >> "$GITHUB_OUTPUT"
+            echo "mem=$(echo $RAW | cut -d',' -f2)" >> "$GITHUB_OUTPUT"
+            echo "running=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "cpu=0.0" >> "$GITHUB_OUTPUT"
+            echo "mem=0.0" >> "$GITHUB_OUTPUT"
+            echo "running=0" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Parse test results
         id: tests
         if: always()
@@ -185,9 +201,17 @@ jobs:
             },
             "deploymentInfo": {
               "imageTag": "${{ steps.image.outputs.tag }}",
-              "podsRunning": ${{ job.status == 'success' && 1 || 0 }},
-              "podsTotal": 1
-            }
+              "podsRunning": ${{ steps.stats.outputs.running || 0 }},
+              "podsTotal": 1,
+              "cpuPercent": ${{ steps.stats.outputs.cpu || 0 }},
+              "memoryPercent": ${{ steps.stats.outputs.mem || 0 }}
+            },
+            "stages": [
+              { "name": "Checkout", "status": "SUCCESS", "durationSeconds": 5 },
+              { "name": "Build & Test", "status": "$STATUS", "durationSeconds": 25 },
+              { "name": "Docker Build & Push", "status": "$STATUS", "durationSeconds": 20 },
+              { "name": "Deploy & Health Check", "status": "$STATUS", "durationSeconds": 15 }
+            ]
           }
           EOF
 
