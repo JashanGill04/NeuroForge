@@ -83,6 +83,9 @@ services:
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-unused}
       KEYCLOAK_ADMIN_SERVER_URL: http://keycloak:8080
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      GITHUB_PAT: ${GITHUB_PAT}
+      GITHUB_OWNER: ${GITHUB_OWNER}
+      GITHUB_REPO: ${GITHUB_REPO}
     depends_on:
       postgres:
         condition: service_healthy
