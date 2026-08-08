@@ -6,11 +6,17 @@ import com.nexus.NeuroForge.models.*;
 import com.nexus.NeuroForge.models.interfaces.DeploymentEnvironment;
 import com.nexus.NeuroForge.repositories.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import com.nexus.NeuroForge.models.interfaces.TestResult;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,30 +55,30 @@ public class PipelineService {
             }
         }
 
-   if (req.getTestSummary() != null) {
-    var ts = req.getTestSummary();
-    for (int i = 0; i < ts.passed; i++) {
-        TestCase tc = new TestCase();
-        tc.setResult(TestResult.PASSED);
-        tc.setCoverage(ts.coveragePercent);
-        tc.setPipeline(pipeline);
-        pipeline.getTestCases().add(tc);
-    }
-    for (int i = 0; i < ts.failed; i++) {
-        TestCase tc = new TestCase();
-        tc.setResult(TestResult.FAILED);
-        tc.setCoverage(ts.coveragePercent);
-        tc.setPipeline(pipeline);
-        pipeline.getTestCases().add(tc);
-    }
-    for (int i = 0; i < ts.skipped; i++) {
-        TestCase tc = new TestCase();
-        tc.setResult(TestResult.SKIPPED);
-        tc.setCoverage(ts.coveragePercent);
-        tc.setPipeline(pipeline);
-        pipeline.getTestCases().add(tc);
-    }
-}
+        if (req.getTestSummary() != null) {
+            var ts = req.getTestSummary();
+            for (int i = 0; i < ts.passed; i++) {
+                TestCase tc = new TestCase();
+                tc.setResult(TestResult.PASSED);
+                tc.setCoverage(ts.coveragePercent);
+                tc.setPipeline(pipeline);
+                pipeline.getTestCases().add(tc);
+            }
+            for (int i = 0; i < ts.failed; i++) {
+                TestCase tc = new TestCase();
+                tc.setResult(TestResult.FAILED);
+                tc.setCoverage(ts.coveragePercent);
+                tc.setPipeline(pipeline);
+                pipeline.getTestCases().add(tc);
+            }
+            for (int i = 0; i < ts.skipped; i++) {
+                TestCase tc = new TestCase();
+                tc.setResult(TestResult.SKIPPED);
+                tc.setCoverage(ts.coveragePercent);
+                tc.setPipeline(pipeline);
+                pipeline.getTestCases().add(tc);
+            }
+        }
 
         Deployment deployment = new Deployment();
         deployment.setEnvironment(DeploymentEnvironment.valueOf(req.getEnvironment()));
@@ -122,16 +128,16 @@ public class PipelineService {
             return si;
         }).collect(Collectors.toList());
 
-var testInfo = new PipelineDetailDTO.TestInfo();
-testInfo.passed = (int) p.getTestCases().stream()
-        .filter(t -> t.getResult() == TestResult.PASSED).count();
-testInfo.failed = (int) p.getTestCases().stream()
-        .filter(t -> t.getResult() == TestResult.FAILED).count();
-testInfo.skipped = (int) p.getTestCases().stream()
-        .filter(t -> t.getResult() == TestResult.SKIPPED).count();
-testInfo.coveragePercent = p.getTestCases().stream()
-        .mapToDouble(TestCase::getCoverage).average().orElse(0);
-dto.tests = testInfo;
+        var testInfo = new PipelineDetailDTO.TestInfo();
+        testInfo.passed = (int) p.getTestCases().stream()
+                .filter(t -> t.getResult() == TestResult.PASSED).count();
+        testInfo.failed = (int) p.getTestCases().stream()
+                .filter(t -> t.getResult() == TestResult.FAILED).count();
+        testInfo.skipped = (int) p.getTestCases().stream()
+                .filter(t -> t.getResult() == TestResult.SKIPPED).count();
+        testInfo.coveragePercent = p.getTestCases().stream()
+                .mapToDouble(TestCase::getCoverage).average().orElse(0);
+        dto.tests = testInfo;
 
         if (!p.getDeployments().isEmpty()) {
             Deployment d = p.getDeployments().get(p.getDeployments().size() - 1);
@@ -180,39 +186,82 @@ dto.tests = testInfo;
         );
     }
 
-    // Add these methods to your existing PipelineService.java
+    // --- GitHub Actions integration (replaces the old Jenkins trigger/rollback stubs) ---
+
+    @Autowired private RestTemplate restTemplate;
+
+    @Value("${github.token}")
+    private String githubToken;
+
+    @Value("${github.owner}")
+    private String githubOwner;
+
+    @Value("${github.repo}")
+    private String githubRepo;
+
+    @Value("${github.workflow-file:ci-cd.yml}")
+    private String githubWorkflowFile;
+
+    @Value("${github.branch:main}")
+    private String githubBranch;
 
     public void triggerJenkinsBuild(Long projectId) {
         // 1. Verify project exists
-        Project project = projectRepository.findById(projectId)
+        projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("No project found with id " + projectId));
 
-        // 2. Call Jenkins REST API to start the job
-        // Example using RestTemplate:
-        // String jenkinsUrl = "http://localhost:8080/job/NeuroForge/build";
-        // restTemplate.postForEntity(jenkinsUrl, null, String.class);
-
-        // Note: If you want automated triggers from source control, ensure your repository
-        // (e.g., https://github.com/RajanGill04/your-repo-name) is configured to send
-        // webhooks directly to Jenkins or to this Spring Boot service.
+        // 2. Dispatch the GitHub Actions workflow with the normal (non-rollback) inputs
+        dispatchWorkflow(Map.of(
+                "rollback", "false",
+                "image_tag", ""
+        ));
     }
 
     public void executeRollback(Long pipelineId) {
-        // 1. Fetch the pipeline and its deployment details
+        // 1. Fetch the pipeline and its deployments
         Pipeline pipeline = pipelineRepository.findById(pipelineId)
                 .orElseThrow(() -> new IllegalArgumentException("Pipeline not found"));
 
-        // 2. Ensure deployment is rollback eligible
-        Deployment deployment = pipeline.getDeployments().get(pipeline.getDeployments().size() - 1);
-        if (!deployment.isRollbackEligible()) {
+        if (pipeline.getDeployments().isEmpty()) {
+            throw new IllegalStateException("This pipeline has no deployment to roll back.");
+        }
+
+        Deployment latest = pipeline.getDeployments().get(pipeline.getDeployments().size() - 1);
+        if (!latest.isRollbackEligible()) {
             throw new IllegalStateException("This deployment is not eligible for rollback.");
         }
 
-        // 3. Trigger rollback (e.g., call a specific Jenkins job with the older imageTag)
-        // String imageTag = deployment.getImageTag();
-        // triggerJenkinsRollbackJob(imageTag);
+        // 2. Find the last deployment that actually succeeded, in the SAME environment,
+        //    from an earlier pipeline run — that's the image we want to redeploy.
+        DeploymentEnvironment env = latest.getEnvironment();
+        Deployment previousGood = deploymentRepository
+                .findTopByPipeline_Project_IdAndEnvironmentAndSuccessTrueAndPipeline_IdNotOrderByDeployedAtDesc(
+                        pipeline.getProject().getId(), env, pipeline.getId())
+                .orElseThrow(() -> new IllegalStateException("No previous successful deployment found to roll back to."));
+
+        // 3. Dispatch the workflow in rollback mode, telling it which image tag to redeploy
+        dispatchWorkflow(Map.of(
+                "rollback", "true",
+                "image_tag", previousGood.getImageTag()
+        ));
     }
 
+    private void dispatchWorkflow(Map<String, String> inputs) {
+        String url = String.format(
+                "https://api.github.com/repos/%s/%s/actions/workflows/%s/dispatches",
+                githubOwner, githubRepo, githubWorkflowFile);
 
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + githubToken);
+        headers.set("Accept", "application/vnd.github+json");
+        headers.setContentType(MediaType.APPLICATION_JSON);
 
+        Map<String, Object> body = Map.of(
+                "ref", githubBranch,
+                "inputs", inputs
+        );
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+        restTemplate.postForEntity(url, entity, String.class);
+    }
 }
