@@ -53,6 +53,10 @@ jobs:
 
       - name: Build, test, coverage
         working-directory: ./Backend
+        env:
+          DB_URL: jdbc:postgresql://localhost:5433/neuroforge_nexus
+          DB_USERNAME: postgres
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: mvn clean test jacoco:report package
 
       - name: SonarQube Quality Gate Simulation
