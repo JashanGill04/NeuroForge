@@ -73,10 +73,10 @@ jobs:
       - name: Run container
         run: |
           docker run -d -p 9001:9000 \
-            --network host \
-            -e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/neuroforge_nexus \
-            -e SPRING_DATASOURCE_USERNAME=postgres \
-            -e SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            -e DB_URL=jdbc:postgresql://host.docker.internal:5433/neuroforge_nexus \
+            -e DB_USERNAME=postgres \
+            -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            --add-host=host.docker.internal:host-gateway \
             --name neuroforge-container \
             neuroforge-service:${{ github.sha }}
 
