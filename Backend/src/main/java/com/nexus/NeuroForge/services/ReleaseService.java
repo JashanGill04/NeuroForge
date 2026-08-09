@@ -132,7 +132,7 @@ public class ReleaseService {
                         }
                     }
                 });
-    }
+        }
 
     public Release getActiveRelease(DeploymentEnvironment environment) {
         return releaseRepository.findTopByEnvironmentAndActiveTrueOrderByReleaseDateDesc(environment)
