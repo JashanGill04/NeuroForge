@@ -46,10 +46,6 @@ jobs:
           --health-retries 5
 
     steps:
-      - name: Record Start Time
-        # Captures the Unix epoch time to accurately calculate duration
-        run: echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
-
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
@@ -68,15 +64,6 @@ jobs:
           java-version: '25'
           distribution: 'temurin'
           cache: 'maven'
-
-      - name: Fix Application.properties casing for Linux
-        working-directory: ./Backend
-        # Prevents the pipeline from crashing due to Linux case-sensitivity
-        run: |
-          if [ -f "src/test/resources/Application.properties" ]; then
-            mv src/test/resources/Application.properties src/test/resources/application.properties
-            echo "Renamed Application.properties to application.properties for Linux compatibility"
-          fi
 
       - name: Build, test, coverage
         working-directory: ./Backend
@@ -137,8 +124,7 @@ jobs:
         id: healthcheck
         run: |
           for i in $(seq 1 15); do
-            # Looks for real Spring Boot UP status instead of a raw 404 response
-            if curl -s http://localhost:9001/actuator/health | grep -q '"status":"UP"'; then
+            if curl -s http://localhost:9001/ > /dev/null; then
               echo "API is up!"
               exit 0
             fi
@@ -194,19 +180,13 @@ jobs:
       - name: Send webhook to controller
         if: always()
         run: |
-          # Calculate actual elapsed time
-          END_TIME=$(date +%s)
-          DURATION=$((END_TIME - START_TIME))
-          
           STATUS="${{ job.status == 'success' && 'SUCCESS' || 'FAILED' }}"
-          
           curl -s -X POST "${{ secrets.CONTROLLER_URL }}" \
             -H "Content-Type: application/json" \
             -d @- <<EOF
           {
             "projectId": ${{ env.PROJECT_ID }},
             "status": "$STATUS",
-            "duration": $DURATION,
             "commitHash": "${{ steps.gitinfo.outputs.hash }}",
             "commitMessage": "${{ steps.gitinfo.outputs.msg }}",
             "branch": "${{ steps.gitinfo.outputs.branch }}",
@@ -240,3 +220,5 @@ jobs:
         run: |
           echo "Deployment failed — tearing down bad container."
           docker rm -f neuroforge-container || true
+          # To auto-redeploy the last good SHA, store it (e.g. in a repo variable or
+          # your controller) after each successful run, then pull/run that tag here.

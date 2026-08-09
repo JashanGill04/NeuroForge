@@ -94,45 +94,25 @@ public class ReleaseService {
             throw new IllegalStateException("Only the currently active release can be rolled back.");
         }
 
-        // 1. Mark status as ROLLBACK_IN_PROGRESS (DO NOT flip active slots yet!)
-        release.setStatus(ReleaseStatus.ROLLBACK_IN_PROGRESS);
+        Long pipelineId = release.getDeployment().getPipeline().getId();
+        pipelineService.executeRollback(pipelineId); // dispatches the real rollback workflow
+
+        release.setActive(false);
+        release.setStatus(ReleaseStatus.ROLLED_BACK);
         releaseRepository.save(release);
 
-        // 2. Dispatch GitHub Actions workflow in background
-        Long pipelineId = release.getDeployment().getPipeline().getId();
-        pipelineService.executeRollback(pipelineId);
-    }
-
-    /**
-     * Called by PipelineService when GitHub Actions sends its final webhook response.
-     */
-    public void finalizeRollback(Long projectId, DeploymentEnvironment env, boolean success) {
-        releaseRepository.findTopByEnvironmentAndActiveTrueOrderByReleaseDateDesc(env)
-                .ifPresent(activeRelease -> {
-                    if (activeRelease.getStatus() == ReleaseStatus.ROLLBACK_IN_PROGRESS) {
-                        if (success) {
-                            // Mark bad release as rolled back
-                            activeRelease.setActive(false);
-                            activeRelease.setStatus(ReleaseStatus.ROLLED_BACK);
-                            releaseRepository.save(activeRelease);
-
-                            // Reactivate the previous superseded release
-                            releaseRepository.findByEnvironmentOrderByReleaseDateDesc(env).stream()
-                                    .filter(r -> r.getStatus() == ReleaseStatus.SUPERSEDED)
-                                    .findFirst()
-                                    .ifPresent(prev -> {
-                                        prev.setActive(true);
-                                        prev.setStatus(ReleaseStatus.DEPLOYED);
-                                        releaseRepository.save(prev);
-                                    });
-                        } else {
-                            // Rollback failed in GitHub Actions: restore active status
-                            activeRelease.setStatus(ReleaseStatus.ROLLBACK_FAILED);
-                            releaseRepository.save(activeRelease);
-                        }
-                    }
+        // Reactivate the most recently superseded release in the same
+        // environment — that's the image the rollback workflow just
+        // redeployed.
+        releaseRepository.findByEnvironmentOrderByReleaseDateDesc(release.getEnvironment()).stream()
+                .filter(r -> r.getStatus() == ReleaseStatus.SUPERSEDED)
+                .findFirst()
+                .ifPresent(prev -> {
+                    prev.setActive(true);
+                    prev.setStatus(ReleaseStatus.DEPLOYED);
+                    releaseRepository.save(prev);
                 });
-        }
+    }
 
     public Release getActiveRelease(DeploymentEnvironment environment) {
         return releaseRepository.findTopByEnvironmentAndActiveTrueOrderByReleaseDateDesc(environment)

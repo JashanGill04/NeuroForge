@@ -21,7 +21,6 @@ import {
   FolderKanban,
   Pencil,
   RotateCcw,
-  RefreshCw,
 } from "lucide-react";
 import { pipelineService } from "../../services/pipelineService";
 import { Alert, EmptyState } from "../../components/ui";
@@ -86,39 +85,17 @@ export default function PipelineDashboard() {
   const [buildDetails, setBuildDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  const [lastUpdated, setLastUpdated] = useState(null);
-
-  // silent=true is used for background polling — it skips the loading
-  // spinner so the table doesn't flash empty every 8s, it just updates
-  // in place when new data arrives.
-  const loadData = (silent = false) => {
-    if (!silent) setLoading(true);
-    return Promise.all([pipelineService.getKpis(), pipelineService.getHistory()])
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([pipelineService.getKpis(), pipelineService.getHistory()])
       .then(([k, b]) => {
         setKpis(k);
         setBuilds(
           [...b].sort((a, c) => new Date(c.startedAt) - new Date(a.startedAt)),
         );
-        setLastUpdated(new Date());
       })
       .catch((err) => setError(err.message))
-      .finally(() => {
-        if (!silent) setLoading(false);
-      });
-  };
-
-  useEffect(() => {
-    loadData(false);
-  }, []);
-
-  // Poll in the background so a build that finishes on GitHub's side shows
-  // up here without a manual refresh. Paused while the tab is hidden so it
-  // doesn't burn requests on a background tab.
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") loadData(true);
-    }, 8000);
-    return () => clearInterval(interval);
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -158,8 +135,14 @@ export default function PipelineDashboard() {
     try {
       // Hardcoding projectId 1 for now based on your Jenkinsfile env.PROJECT_ID
       await pipelineService.triggerBuild(1);
-      alert("Build triggered successfully! It'll show up here automatically once the webhook fires.");
-      loadData(true);
+      alert("Build triggered successfully!");
+      // Refresh history
+      const newBuilds = await pipelineService.getHistory();
+      setBuilds(
+        [...newBuilds].sort(
+          (a, c) => new Date(c.startedAt) - new Date(a.startedAt),
+        ),
+      );
     } catch (err) {
       setError("Failed to trigger build: " + err.message);
     }
@@ -183,29 +166,11 @@ export default function PipelineDashboard() {
           <p className="page-subtitle">
             CI/CD build history and deployment status across all projects.
           </p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          {lastUpdated && (
-            <span style={{ fontSize: "0.75rem", opacity: 0.6, display: "flex", alignItems: "center", gap: "5px" }}>
-              <span
-                style={{
-                  width: "6px",
-                  height: "6px",
-                  borderRadius: "50%",
-                  background: "var(--success)",
-                  display: "inline-block",
-                }}
-              />
-              Live &middot; updated {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
-          <button onClick={() => loadData(false)} className="btn" title="Refresh now">
-            <RefreshCw size={16} />
-          </button>
-          <button onClick={handleTriggerBuild} className="btn btn-primary">
+        </div>  
+        <button onClick={handleTriggerBuild} className="btn btn-primary">
             <Activity size={16} /> Trigger Build
           </button>
-        </div>
+      
       </div>
 
       {error && <Alert onClose={() => setError("")}>{error}</Alert>}

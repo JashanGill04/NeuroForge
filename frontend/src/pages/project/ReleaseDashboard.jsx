@@ -50,8 +50,6 @@ const STATUS_BADGE = {
   DEPLOYED: { cls: "badge-success", Icon: CheckCircle2, label: "Live" },
   SUPERSEDED: { cls: "badge-todo", Icon: CircleDashed, label: "Standby" },
   ROLLED_BACK: { cls: "badge-blocked", Icon: XCircle, label: "Rolled back" },
-  ROLLBACK_IN_PROGRESS: { cls: "badge-in_progress", Icon: Loader2, label: "Rolling back..." },
-  ROLLBACK_FAILED: { cls: "badge-blocked", Icon: XCircle, label: "Rollback failed" },
   DRAFT: { cls: "badge-in_progress", Icon: Loader2, label: "Draft" },
 };
 
