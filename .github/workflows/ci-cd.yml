@@ -187,6 +187,7 @@ jobs:
           {
             "projectId": ${{ env.PROJECT_ID }},
             "status": "$STATUS",
+            "duration": 65,
             "commitHash": "${{ steps.gitinfo.outputs.hash }}",
             "commitMessage": "${{ steps.gitinfo.outputs.msg }}",
             "branch": "${{ steps.gitinfo.outputs.branch }}",
