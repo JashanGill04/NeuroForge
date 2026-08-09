@@ -124,7 +124,8 @@ jobs:
         id: healthcheck
         run: |
           for i in $(seq 1 15); do
-            if curl -s http://localhost:9001/ > /dev/null; then
+            # Changed to check real application health, not just a 404 response
+            if curl -s http://localhost:9001/actuator/health | grep -q '"status":"UP"'; then
               echo "API is up!"
               exit 0
             fi
@@ -187,7 +188,6 @@ jobs:
           {
             "projectId": ${{ env.PROJECT_ID }},
             "status": "$STATUS",
-            "duration": 65,
             "commitHash": "${{ steps.gitinfo.outputs.hash }}",
             "commitMessage": "${{ steps.gitinfo.outputs.msg }}",
             "branch": "${{ steps.gitinfo.outputs.branch }}",

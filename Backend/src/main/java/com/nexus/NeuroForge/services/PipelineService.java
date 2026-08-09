@@ -25,7 +25,7 @@ public class PipelineService {
     @Autowired private PipelineRepository pipelineRepository;
     @Autowired private DeploymentRepository deploymentRepository;
     @Autowired private ProjectRepository projectRepository; // assumes this exists already
-   @Autowired private ReleaseService releaseService;
+    private ReleaseService releaseService;
     // Called by the webhook when GitHub Actions finishes a build
     public Pipeline recordBuildResult(PipelineWebhookRequest req) {
         Project project = projectRepository.findById(req.getProjectId())
