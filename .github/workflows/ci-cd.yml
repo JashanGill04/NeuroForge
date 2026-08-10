@@ -48,6 +48,7 @@ jobs:
     steps:
       - name: Record pipeline start
         id: pipeline_timer
+        working-directory: .
         run: |
           echo "start_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
           echo "start_iso=$(date -u +%Y-%m-%dT%H:%M:%S)" >> "$GITHUB_OUTPUT"
