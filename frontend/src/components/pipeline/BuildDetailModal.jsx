@@ -1,11 +1,24 @@
-import { X, Loader2, FolderKanban } from 'lucide-react'
+import { X, Loader2, FolderKanban, RotateCcw } from 'lucide-react'
 import { STATUS_BADGE } from './pipelineConstants'
 import BuildOverviewSection from './BuildOverviewSection'
 import BuildStagesTimeline from './BuildStagesTimeline'
 import TestMetricsCard from './TestMetricsCard'
 import DeploymentStatusCard from './DeploymentStatusCard'
 
-export default function BuildDetailModal({ buildId, buildDetails, loading, onClose }) {
+export default function BuildDetailModal({
+  buildId,
+  buildDetails,
+  loading,
+  onClose,
+  // NEW: rollback wiring. canEdit gates the button on role the same way the
+  // rest of the app does (canManage(roles[0])); rollbackEligible comes
+  // straight from the deployment the backend already computes.
+  canEdit,
+  onRollback,
+  rollingBack
+}) {
+  const canRollback = canEdit && !loading && buildDetails?.deployment?.rollbackEligible
+
   return (
     <div className="bd-modal-overlay">
       <div className="panel bd-modal">
@@ -22,9 +35,21 @@ export default function BuildDetailModal({ buildId, buildDetails, loading, onClo
               <FolderKanban size={13} /> Project: {buildDetails?.projectName || 'NeuroForge Nexus'}
             </div>
           </div>
-          <button onClick={onClose} className="bd-close">
-            <X size={18} />
-          </button>
+          <div className="bd-header-actions">
+            {canRollback && (
+              <button
+                className="btn-danger-ghost"
+                onClick={() => onRollback(buildId)}
+                disabled={rollingBack}
+                title="Redeploy the previous successful image for this environment"
+              >
+                <RotateCcw size={13} /> {rollingBack ? 'Rolling back…' : 'Rollback'}
+              </button>
+            )}
+            <button onClick={onClose} className="bd-close">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="bd-body">

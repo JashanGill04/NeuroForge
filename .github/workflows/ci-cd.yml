@@ -14,13 +14,29 @@ on:
         description: 'Image tag to redeploy when rollback=true (e.g. the git SHA)'
         required: false
         type: string
+      project_id:
+        description: 'NeuroForge project ID this build belongs to'
+        required: false
+        type: string
+        default: '1'
+      environment:
+        description: 'Deployment environment'
+        required: false
+        type: string
+        default: 'STAGING'
 
 env:
-  PROJECT_ID: 1
-  ENV_NAME: STAGING
+  # FIX: these used to be hardcoded literals (PROJECT_ID: 1, ENV_NAME: STAGING),
+  # so every build/rollback reported back the same project/env no matter which
+  # project actually triggered it. Now they come from the workflow_dispatch
+  # inputs the backend sends, and only fall back to defaults for a plain
+  # `git push` (which has no inputs to read from).
+  PROJECT_ID: ${{ github.event.inputs.project_id || '1' }}
+  ENV_NAME: ${{ github.event.inputs.environment || 'STAGING' }}
 
 permissions:
   contents: read
+  actions: read   # needed to query the Jobs API for the real job start time
   packages: write
 
 jobs:
@@ -52,6 +68,39 @@ jobs:
         run: |
           echo "start_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
           echo "start_iso=$(date -u +%Y-%m-%dT%H:%M:%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Get real job start time
+        id: job_start
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Our own timer above only starts once THIS step runs — but GitHub
+          # spends real time before that on runner setup + spinning up the
+          # postgres service container, which is why the frontend duration
+          # was running ~30-40s short of what GitHub reports. The Jobs API
+          # knows the job's true started_at (including that setup time), so
+          # pull it directly instead of approximating.
+          RESP=$(curl -s -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs")
+
+          STARTED_AT=$(echo "$RESP" | jq -r --arg name "${{ github.job }}" '[.jobs[] | select(.name==$name)][0].started_at // empty')
+
+          if [ -z "$STARTED_AT" ] || [ "$STARTED_AT" = "null" ]; then
+            # Fallback if the Jobs API hasn't indexed this run yet — don't
+            # fail the whole build over a timing report.
+            STARTED_AT="${{ steps.pipeline_timer.outputs.start_iso }}"
+          else
+            # The API returns e.g. "2026-08-10T05:10:18Z". Strip the trailing
+            # Z so it matches java.time.LocalDateTime's expected
+            # "yyyy-MM-ddTHH:mm:ss" format on the backend — sending the Z
+            # through would make Jackson fail to deserialize startedAt.
+            STARTED_AT="${STARTED_AT%Z}"
+          fi
+
+          EPOCH=$(date -u -d "${STARTED_AT}Z" +%s 2>/dev/null || echo "${{ steps.pipeline_timer.outputs.start_epoch }}")
+          echo "real_start_iso=$STARTED_AT" >> "$GITHUB_OUTPUT"
+          echo "real_start_epoch=$EPOCH" >> "$GITHUB_OUTPUT"
 
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -162,7 +211,7 @@ jobs:
         id: durations
         if: always()
         run: |
-          START=${{ steps.pipeline_timer.outputs.start_epoch }}
+          START=${{ steps.job_start.outputs.real_start_epoch }}
           CHECKOUT_END=${{ steps.checkout_timer.outputs.end_epoch }}
           BUILD_END=${{ steps.build_timer.outputs.end_epoch }}
           DOCKER_END=${{ steps.docker_timer.outputs.end_epoch }}
@@ -232,7 +281,7 @@ jobs:
             "triggerSource": "GITHUB_ACTIONS",
             "environment": "${{ env.ENV_NAME }}",
             "deploymentSuccess": ${{ job.status == 'success' }},
-            "startedAt": "${{ steps.pipeline_timer.outputs.start_iso }}",
+            "startedAt": "${{ steps.job_start.outputs.real_start_iso }}",
             "testSummary": {
               "passed": $(( ${{ steps.tests.outputs.total || 0 }} - ${{ steps.tests.outputs.failed || 0 }} - ${{ steps.tests.outputs.skipped || 0 }} )),
               "failed": ${{ steps.tests.outputs.failed || 0 }},
@@ -247,7 +296,7 @@ jobs:
               "memoryPercent": ${{ steps.stats.outputs.mem || 0 }}
             },
             "stages": [
-              { "name": "Checkout", "status": "SUCCESS", "durationSeconds": ${{ steps.durations.outputs.checkout || 0 }} },
+              { "name": "Setup & Checkout", "status": "SUCCESS", "durationSeconds": ${{ steps.durations.outputs.checkout || 0 }} },
               { "name": "Build & Test", "status": "$STATUS", "durationSeconds": ${{ steps.durations.outputs.build || 0 }} },
               { "name": "Docker Build & Push", "status": "$STATUS", "durationSeconds": ${{ steps.durations.outputs.docker || 0 }} },
               { "name": "Deploy & Health Check", "status": "$STATUS", "durationSeconds": ${{ steps.durations.outputs.deploy || 0 }} }

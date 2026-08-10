@@ -243,10 +243,15 @@ public Pipeline recordBuildResult(PipelineWebhookRequest req) {
         projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("No project found with id " + projectId));
 
-        // 2. Dispatch the GitHub Actions workflow with the normal (non-rollback) inputs
+        // 2. Dispatch the GitHub Actions workflow with the normal (non-rollback)
+        //    inputs. FIX: project_id used to be omitted here entirely, so every
+        //    triggered build fell back to the workflow's default ('1') and got
+        //    recorded against Project 1 no matter which project's dashboard the
+        //    trigger actually came from.
         dispatchWorkflow(Map.of(
                 "rollback", "false",
-                "image_tag", ""
+                "image_tag", "",
+                "project_id", String.valueOf(projectId)
         ));
     }
 
@@ -272,10 +277,14 @@ public Pipeline recordBuildResult(PipelineWebhookRequest req) {
                         pipeline.getProject().getId(), env, pipeline.getId())
                 .orElseThrow(() -> new IllegalStateException("No previous successful deployment found to roll back to."));
 
-        // 3. Dispatch the workflow in rollback mode, telling it which image tag to redeploy
+        // 3. Dispatch the workflow in rollback mode, telling it which image tag
+        //    to redeploy. FIX: same project_id omission as triggerJenkinsBuild
+        //    — without it, a rollback triggered from any project's dashboard
+        //    was silently reported against Project 1.
         dispatchWorkflow(Map.of(
                 "rollback", "true",
-                "image_tag", previousGood.getImageTag()
+                "image_tag", previousGood.getImageTag(),
+                "project_id", String.valueOf(pipeline.getProject().getId())
         ));
     }
 

@@ -1637,6 +1637,14 @@ a { color: inherit; }
 }
 .bd-close:hover { background: var(--surface); color: var(--ink); }
 
+.bd-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+
 .bd-overview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
