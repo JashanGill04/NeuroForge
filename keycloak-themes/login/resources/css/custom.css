@@ -1,30 +1,78 @@
 /* =========================================================================
-   NeuroForge Nexus — Keycloak Custom Theme CSS
-   Rewritten to match hand-built login.ftl / register.ftl (no PatternFly deps)
+   NeuroForge Nexus - Keycloak Custom Theme CSS
+   Synced with Frontend UI & Light Mode Support
    ========================================================================= */
-
 :root {
-  --bg: #05060c;
-  --surface: #10121e;
-  --surface-2: #151831;
-  --surface-glass: rgba(21, 24, 49, 0.75);
-  --border-glass: rgba(148, 163, 253, 0.14);
-  --line: #23263f;
-  --line-soft: #1a1d33;
-  --ink: #eef0ff;
-  --ink-soft: #9497c2;
-  --ink-faint: #62658a;
-  --accent: #7c6bff;
-  --accent-2: #4f8dff;
-  --accent-gradient: linear-gradient(135deg, #7c6bff 0%, #4f8dff 100%);
-  --danger: #ff6b6b;
-  --danger-soft: rgba(255, 107, 107, 0.14);
-  --success: #35d999;
-  --success-soft: rgba(53, 217, 153, 0.14);
+  /* Core surfaces (dark, default) */
+  --bg: #0a0e12;
+  --bg-elevated: #0f151b;
+  --canvas: #0a0e12;
+  --surface: #121920;
+  --surface-2: #172029;
+  --surface-glass: rgba(18, 25, 32, 0.68);
+  --border-glass: rgba(45, 212, 191, 0.14);
+  --line: #232e37;
+  --line-soft: #1a232b;
+
+  /* Text */
+  --ink: #eef3f3;
+  --ink-soft: #93a5ab;
+  --ink-faint: #5b6b72;
+
+  /* Brand */
+  --accent: #14b8a6;
+  --accent-2: #38bdf8;
+  --accent-3: #fbbf24;
+  --accent-dark: #0d9488;
+  --accent-soft: rgba(20, 184, 166, 0.16);
+  --accent-rgb: 20, 184, 166;
+  --accent-gradient: linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%);
+
+  /* Status */
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.15);
+  --success: #4ade80;
+  --success-soft: rgba(74, 222, 128, 0.15);
+
   --radius: 12px;
   --radius-lg: 18px;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.35);
-  --shadow-glow: 0 0 0 1px rgba(124, 107, 255, 0.15), 0 8px 30px rgba(124, 107, 255, 0.12);
+  --shadow-glow: 0 0 0 1px rgba(20, 184, 166, 0.15), 0 8px 30px rgba(20, 184, 166, 0.12);
+  color-scheme: dark;
+}
+
+/* ---------- Light theme ---------- */
+[data-theme="light"] {
+  --bg: #f4f8f8;
+  --bg-elevated: #ffffff;
+  --canvas: #f4f8f8;
+  --surface: #ffffff;
+  --surface-2: #eef4f4;
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --border-glass: rgba(13, 148, 136, 0.16);
+  --line: #dde7e7;
+  --line-soft: #e7eeee;
+  
+  --ink: #0f1c1b;
+  --ink-soft: #4d6265;
+  --ink-faint: #8ba1a3;
+  
+  --accent: #0d9488;
+  --accent-2: #0284c7;
+  --accent-3: #d97706;
+  --accent-dark: #0f766e;
+  --accent-soft: rgba(13, 148, 136, 0.12);
+  --accent-rgb: 13, 148, 136;
+  --accent-gradient: linear-gradient(135deg, #0d9488 0%, #0284c7 100%);
+  
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+  --success: #16a34a;
+  --success-soft: rgba(22, 163, 74, 0.1);
+  
+  --shadow: 0 1px 2px rgba(15, 30, 28, 0.05), 0 12px 28px rgba(15, 30, 28, 0.07);
+  --shadow-glow: 0 0 0 1px rgba(13, 148, 136, 0.12), 0 8px 24px rgba(13, 148, 136, 0.10);
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -36,6 +84,7 @@ body, html {
   margin: 0;
   padding: 0;
   height: 100%;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 a { color: inherit; }
@@ -47,6 +96,7 @@ a { color: inherit; }
   margin: 0 0 6px;
   color: var(--ink);
 }
+
 .auth-subtitle {
   color: var(--ink-soft);
   font-size: 13.5px;
@@ -66,7 +116,7 @@ label {
   font-size: 12.5px;
   font-weight: 600;
   margin-bottom: 6px;
-  display: inline-flex;   /* inline-level: keeps the required-mark on the same line */
+  display: inline-flex;
   align-items: center;
   gap: 3px;
   white-space: nowrap;
@@ -77,10 +127,7 @@ label {
 }
 
 /* ---------- Inputs & selects ---------- */
-input[type="text"],
-input[type="password"],
-input[type="email"],
-select {
+input[type="text"], input[type="password"], input[type="email"], select {
   width: 100%;
   background: var(--surface-2);
   border: 1px solid var(--line);
@@ -90,18 +137,17 @@ select {
   outline: none;
   font-size: 13.5px;
   font-family: inherit;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background-color 0.25s, color 0.25s;
 }
 
-input:focus,
-select:focus {
+input:focus, select:focus {
   border-color: var(--accent);
 }
 
 select {
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239497c2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2393a5ab' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 34px;
@@ -138,20 +184,15 @@ select {
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
 }
+
 .password-toggle-btn:hover {
   color: var(--ink);
   background: var(--surface);
 }
+
 .password-toggle-btn svg {
   width: 18px;
   height: 18px;
-}
-
-/* ---------- Field errors ---------- */
-.field-error {
-  color: var(--danger);
-  font-size: 12px;
-  margin-top: 5px;
 }
 
 /* ---------- Remember me / forgot password row ---------- */
@@ -172,6 +213,7 @@ select {
   font-weight: 500;
   cursor: pointer;
 }
+
 .checkbox-label input[type="checkbox"] {
   width: 15px;
   height: 15px;
@@ -179,15 +221,14 @@ select {
   cursor: pointer;
 }
 
-.form-options a,
-.auth-footer-text a {
+.form-options a, .auth-footer-text a {
   color: var(--accent-2);
   text-decoration: none;
   font-weight: 500;
   font-size: 13px;
 }
-.form-options a:hover,
-.auth-footer-text a:hover {
+
+.form-options a:hover, .auth-footer-text a:hover {
   text-decoration: underline;
 }
 
@@ -211,14 +252,40 @@ select {
   font-weight: 600;
   font-size: 13.5px;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(124, 107, 255, 0.3);
+  box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.3);
   transition: transform 0.12s, box-shadow 0.12s;
 }
+
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(124, 107, 255, 0.4);
+  box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.4);
 }
+
 .btn-block { width: 100%; }
+
+/* ---------- Theme Toggle ---------- */
+.theme-toggle-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.15s, border-color 0.15s;
+  z-index: 10;
+}
+.theme-toggle-btn:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
 
 /* ---------- Alerts ---------- */
 .alert {
@@ -231,16 +298,26 @@ select {
   font-size: 13px;
   margin-bottom: 20px;
 }
-.alert-error { background: var(--danger-soft); color: #ffb3b3; border: 1px solid rgba(255, 107, 107, 0.25); }
-.alert-success { background: var(--success-soft); color: #8ff0cd; border: 1px solid rgba(53, 217, 153, 0.25); }
 
-/* ---------- Small helpers reused from template.ftl inline styles ---------- */
+.alert-error {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.alert-success {
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+/* ---------- Small helpers ---------- */
 .brand-mark {
   width: 34px;
   height: 34px;
   border-radius: 10px;
   background: var(--accent-gradient);
-  box-shadow: 0 6px 18px rgba(124, 107, 255, 0.35);
+  box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -258,8 +335,8 @@ select {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #cfc9ff;
-  background: rgba(124, 107, 255, 0.16);
+  color: var(--accent-3);
+  background: var(--accent-soft);
   padding: 5px 12px;
   border-radius: 999px;
   margin-bottom: 18px;
@@ -272,7 +349,7 @@ select {
   color: transparent;
 }
 
-/* ---------- Responsive: stack the split-screen layout on narrow viewports ---------- */
+/* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   body > div[style*="display: flex"][style*="height: 100vh"] {
     flex-direction: column !important;

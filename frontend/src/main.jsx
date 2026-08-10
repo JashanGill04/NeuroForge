@@ -7,6 +7,7 @@ import './styles/index.css'
 // 1. Import your Keycloak setup and AuthProvider
 import keycloak from './lib/keyclock' 
 import { AuthProvider } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
 let initialized = false
@@ -16,11 +17,13 @@ function renderApp() {
   root.render(
     <React.StrictMode>
       {/* 3. Pass the keycloak instance into the AuthProvider here */}
-      <AuthProvider keycloak={keycloak}>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider keycloak={keycloak}>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </React.StrictMode>
   )
 }

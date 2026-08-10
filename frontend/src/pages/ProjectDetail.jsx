@@ -4,20 +4,21 @@ import { projectsApi } from '../api/projects'
 import { sprintsApi } from '../api/sprints'
 import { milestonesApi } from '../api/milestones'
 import { useAuth } from '../context/AuthContext'
-import { Alert, StatusBadge, EmptyState } from '../components/ui'
+import { Alert, StatusBadge } from '../components/ui'
 import { canManage } from '../utils/roles'
+import SprintsPanel from '../components/projectDetail/SprintsPanel'
+import MilestonesPanel from '../components/projectDetail/MilestonesPanel'
 
 export default function ProjectDetail() {
   const { id } = useParams()
   const { roles } = useAuth()
-  
+
   const [project, setProject] = useState(null)
   const [sprints, setSprints] = useState([])
   const [milestones, setMilestones] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
-  // Added name field to sprintForm state
   const [sprintForm, setSprintForm] = useState({ name: '', goal: '', startDate: '', endDate: '', milestoneId: '' })
   const [milestoneForm, setMilestoneForm] = useState({ title: '', targetDate: '' })
   const [savingSprint, setSavingSprint] = useState(false)
@@ -120,132 +121,24 @@ export default function ProjectDetail() {
       <Alert onClose={() => setError('')}>{error}</Alert>
 
       <div className="two-col">
-        {/* Sprints Panel */}
-        <div className="panel">
-          <div className="panel-header">
-            <h2>Sprints</h2>
-          </div>
+        <SprintsPanel
+          sprints={sprints}
+          milestones={milestones}
+          canEdit={canEdit}
+          sprintForm={sprintForm}
+          setSprintForm={setSprintForm}
+          savingSprint={savingSprint}
+          onAddSprint={handleAddSprint}
+        />
 
-          {canEdit && (
-            <form onSubmit={handleAddSprint} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-              <input
-                placeholder="Sprint Name (e.g. Sprint 1)"
-                value={sprintForm.name}
-                onChange={(e) => setSprintForm((f) => ({ ...f, name: e.target.value }))}
-                required
-                style={{ width: '100%' }}
-              />
-              <input
-                placeholder="Sprint Goal (e.g. Implement Payment Service)"
-                value={sprintForm.goal}
-                onChange={(e) => setSprintForm((f) => ({ ...f, goal: e.target.value }))}
-                required
-                style={{ width: '100%' }}
-              />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <input
-                  type="date"
-                  title="Start Date"
-                  value={sprintForm.startDate}
-                  onChange={(e) => setSprintForm((f) => ({ ...f, startDate: e.target.value }))}
-                  required
-                />
-                <input
-                  type="date"
-                  title="End Date"
-                  value={sprintForm.endDate}
-                  onChange={(e) => setSprintForm((f) => ({ ...f, endDate: e.target.value }))}
-                  required
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <select
-                  className="inline-select"
-                  value={sprintForm.milestoneId}
-                  onChange={(e) => setSprintForm((f) => ({ ...f, milestoneId: e.target.value }))}
-                  style={{ flex: 1 }}
-                >
-                  <option value="">-- Assign to Milestone (Optional) --</option>
-                  {milestones.map((m) => (
-                    <option key={m.id} value={m.id}>{m.title}</option>
-                  ))}
-                </select>
-                <button className="btn-primary" type="submit" disabled={savingSprint} style={{ whiteSpace: 'nowrap' }}>
-                  {savingSprint ? 'Adding…' : 'Add sprint'}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {sprints.length === 0 ? (
-            <EmptyState title="No sprints yet" />
-          ) : (
-            <ul className="list">
-              {sprints.map((s) => {
-                const assignedMilestone = milestones.find((m) => m.id === s.milestoneId)
-                return (
-                  <li key={s.id} className="list-item">
-                    <div>
-                      <div className="list-item-title">{s.name} — <span style={{ fontWeight: 'normal', color: 'var(--ink-soft)' }}>{s.goal}</span></div>
-                      <div className="list-item-sub">{s.startDate} to {s.endDate}</div>
-                    </div>
-                    {assignedMilestone ? (
-                      <span className="badge" style={{ background: 'var(--accent-soft)', color: '#cfc9ff' }}>
-                        {assignedMilestone.title}
-                      </span>
-                    ) : (
-                      <span className="list-item-sub" style={{ fontStyle: 'italic' }}>No milestone</span>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
-
-        {/* Milestones Panel */}
-        <div className="panel">
-          <div className="panel-header">
-            <h2>Milestones</h2>
-          </div>
-
-          {canEdit && (
-            <form onSubmit={handleAddMilestone} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-              <input
-                placeholder="Milestone title (e.g. v1)"
-                value={milestoneForm.title}
-                onChange={(e) => setMilestoneForm((f) => ({ ...f, title: e.target.value }))}
-                required
-                style={{ width: '100%' }}
-              />
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <input
-                  type="date"
-                  value={milestoneForm.targetDate}
-                  onChange={(e) => setMilestoneForm((f) => ({ ...f, targetDate: e.target.value }))}
-                  required
-                  style={{ flex: 1 }}
-                />
-                <button className="btn-primary" type="submit" disabled={savingMilestone} style={{ whiteSpace: 'nowrap' }}>
-                  {savingMilestone ? 'Adding…' : 'Add milestone'}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {milestones.length === 0 ? (
-            <EmptyState title="No milestones yet" />
-          ) : (
-            <ul className="list">
-              {milestones.map((m) => (
-                <li key={m.id} className="list-item">
-                  <div className="list-item-title">{m.title}</div>
-                  <div className="list-item-sub">Due {m.targetDate}</div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <MilestonesPanel
+          milestones={milestones}
+          canEdit={canEdit}
+          milestoneForm={milestoneForm}
+          setMilestoneForm={setMilestoneForm}
+          savingMilestone={savingMilestone}
+          onAddMilestone={handleAddMilestone}
+        />
       </div>
     </div>
   )

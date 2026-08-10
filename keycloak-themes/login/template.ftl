@@ -9,12 +9,31 @@
     <link rel="icon" href="${url.resourcesPath}/img/favicon.ico" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="${url.resourcesPath}/css/custom.css">
+    
+    <!-- Sync theme immediately before render to avoid flash of wrong mode -->
+    <script>
+        (function() {
+            try {
+                var theme = localStorage.getItem('neuroforge-theme');
+                if (!theme) {
+                    theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+                }
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body class="landing" style="margin: 0; padding: 0; height: 100vh; overflow: hidden;">
+    <!-- Theme Toggle Button -->
+    <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle theme">
+        <svg id="icon-moon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        <svg id="icon-sun" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+    </button>
+
     <div style="display: flex; height: 100vh; width: 100vw; background: var(--bg); font-family: 'Inter', sans-serif; color: var(--ink);">
         
         <!-- Left Brand / Visual Side (Split Screen) -->
-        <div style="flex: 1; background: radial-gradient(900px 500px at 20% 0%, rgba(124, 107, 255, 0.16), transparent 60%), var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; justify-content: space-between; padding: 60px; position: relative;">
+        <div style="flex: 1; background: radial-gradient(900px 500px at 20% 0%, var(--accent-soft), transparent 60%), var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; justify-content: space-between; padding: 60px; position: relative;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div class="brand-mark">NF</div>
                 <div>
@@ -32,7 +51,6 @@
                     Streamline your agile workflows, automate sprint tracking, and eliminate delivery blockers with intelligent workspace management.
                 </p>
             </div>
-
             <div style="color: var(--ink-faint); font-size: 12px;">
                 &copy; 2026 NeuroForge Inc. All rights reserved.
             </div>
@@ -60,10 +78,10 @@
                 </#if>
             </div>
         </div>
-
     </div>
 
     <script>
+        // Password visibility toggle logic
         function togglePassword(btn) {
             var targetId = btn.getAttribute('data-target');
             var input = document.getElementById(targetId);
@@ -82,6 +100,31 @@
                 btn.setAttribute('aria-label', 'Show password');
             }
         }
+
+        // Theme toggle logic sync'd with React app's local storage
+        function updateThemeIcon(theme) {
+            var isDark = theme === 'dark';
+            document.getElementById('icon-moon').style.display = isDark ? 'block' : 'none';
+            document.getElementById('icon-sun').style.display = isDark ? 'none' : 'block';
+        }
+
+        function toggleTheme() {
+            var currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            updateThemeIcon(newTheme);
+            
+            try {
+                localStorage.setItem('neuroforge-theme', newTheme);
+            } catch (e) {}
+        }
+
+        // Initialize theme icon on load
+        document.addEventListener('DOMContentLoaded', function() {
+            var theme = document.documentElement.getAttribute('data-theme') || 'dark';
+            updateThemeIcon(theme);
+        });
     </script>
 </body>
 </html>

@@ -18,7 +18,6 @@ import Blockers from './pages/project/Blockers'
 import Reports from './pages/project/Reports'
 import Settings from './pages/project/Settings'
 import PipelineDashboard from './pages/project/PipelineDashboard'
-import ReleaseDashboard from './pages/project/ReleaseDashboard'
 
 export default function App() {
   return (
@@ -42,7 +41,6 @@ export default function App() {
           <Route path="board" element={<Board />} />
           <Route path="backlog" element={<Backlog />} />
           <Route path="sprints" element={<SprintsMilestones />} />
-          <Route path="releases" element={<ReleaseDashboard/>}/>
           <Route path="blockers" element={<Blockers />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />

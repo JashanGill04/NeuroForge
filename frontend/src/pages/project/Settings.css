@@ -1,0 +1,120 @@
+/* Styles for the project Settings page.
+   Namespaced with "ps-" so nothing collides with the global stylesheet
+   (the previous inline version reused .settings-danger-zone, which the
+   global CSS already styled as a flex row and caused a layout bug). */
+
+.ps-field-locked input {
+  color: var(--ink-soft, #8a8fa3);
+  cursor: not-allowed;
+}
+.ps-field-locked span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ps-lock-icon {
+  opacity: 0.6;
+}
+
+.ps-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 820px) {
+  .ps-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ps-overview-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.ps-overview-row:last-child {
+  border-bottom: none;
+}
+.ps-overview-icon {
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.ps-overview-label {
+  font-size: 12px;
+  color: var(--ink-soft, #8a8fa3);
+}
+.ps-overview-value {
+  font-weight: 600;
+  margin-left: auto;
+  text-align: right;
+}
+.ps-status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+}
+.ps-status-pill[data-status="ON_HOLD"] {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+.ps-status-pill[data-status="COMPLETED"] {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+.ps-danger-zone {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ps-danger-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f87171;
+}
+.ps-danger-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: 10px;
+  background: rgba(248, 113, 113, 0.05);
+}
+.ps-danger-card.ps-danger-confirm {
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.1);
+}
+.ps-danger-actions {
+  display: flex;
+  gap: 8px;
+}
+.ps-btn-danger {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ps-btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

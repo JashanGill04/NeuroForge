@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { UserPlus, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { teamsApi } from '../api/teams'
 import { usersApi } from '../api/users'
 import { useAuth } from '../context/AuthContext'
-import { Alert, Modal, EmptyState } from '../components/ui'
+import { Alert, EmptyState } from '../components/ui'
 import { canManage, canDelete } from '../utils/roles'
+import TeamCard from '../components/teams/TeamCard'
+import CreateTeamModal from '../components/teams/CreateTeamModal'
+import AddMemberModal from '../components/teams/AddMemberModal'
 
 export default function Teams() {
   const { roles } = useAuth()
@@ -97,33 +100,14 @@ export default function Teams() {
           <EmptyState title="No matching teams" subtitle="Try a different search term." />
         )}
         {filteredTeams.map((t) => (
-          <div className="team-card" key={t.id}>
-            <div className="team-card-header">
-              <h3>{t.name}</h3>
-              {canRemove && (
-                <button className="btn-danger-ghost" onClick={() => handleDelete(t)}>
-                  Delete
-                </button>
-              )}
-            </div>
-            <div className="team-member-count">
-              {t.memberCount} {t.memberCount === 1 ? 'member' : 'members'}
-            </div>
-            {t.memberUsernames?.length > 0 ? (
-              <ul className="chip-list">
-                {t.memberUsernames.map((name) => (
-                  <li key={name} className="chip">{name}</li>
-                ))}
-              </ul>
-            ) : (
-              <div className="empty-sub">No members assigned yet</div>
-            )}
-            {canEdit && (
-              <button className="btn-ghost-sm team-add-member-btn" onClick={() => setAddingToTeam(t)}>
-                <UserPlus size={14} /> Add member
-              </button>
-            )}
-          </div>
+          <TeamCard
+            key={t.id}
+            team={t}
+            canEdit={canEdit}
+            canRemove={canRemove}
+            onDelete={handleDelete}
+            onAddMember={setAddingToTeam}
+          />
         ))}
       </div>
 
@@ -149,84 +133,5 @@ export default function Teams() {
         />
       )}
     </div>
-  )
-}
-
-function CreateTeamModal({ onClose, onCreated }) {
-  const [name, setName] = useState('')
-  const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setSubmitting(true)
-    try {
-      const team = await teamsApi.create(name.trim())
-      onCreated(team)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Modal title="Create a new team" onClose={onClose}>
-      <Alert onClose={() => setError('')}>{error}</Alert>
-      <form onSubmit={handleSubmit} className="modal-form">
-        <label className="field">
-          <span>Team name</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
-        </label>
-        <button className="btn-primary btn-block" type="submit" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create team'}
-        </button>
-      </form>
-    </Modal>
-  )
-}
-
-function AddMemberModal({ team, users, onClose, onAdded }) {
-  const eligible = users.filter((u) => String(u.teamId || '') !== String(team.id))
-  const [userId, setUserId] = useState('')
-  const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!userId) return
-    setError('')
-    setSubmitting(true)
-    try {
-      await usersApi.assignTeam(Number(userId), team.id)
-      onAdded()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Modal title={`Add a member to "${team.name}"`} onClose={onClose}>
-      <Alert onClose={() => setError('')}>{error}</Alert>
-      <form onSubmit={handleSubmit} className="modal-form">
-        <label className="field">
-          <span>User</span>
-          <select value={userId} onChange={(e) => setUserId(e.target.value)} required>
-            <option value="">Select a user</option>
-            {eligible.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.username}{u.teamName ? ` (currently: ${u.teamName})` : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button className="btn-primary btn-block" type="submit" disabled={submitting}>
-          {submitting ? 'Adding…' : 'Add to team'}
-        </button>
-      </form>
-    </Modal>
   )
 }

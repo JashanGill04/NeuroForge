@@ -1,11 +1,13 @@
 // src/components/ProjectLayout.jsx (or wherever this is located)
 import { NavLink, Outlet, useParams, Link } from 'react-router-dom'
+import { useState } from 'react'
 import {
   ChevronLeft, KanbanSquare, ListTodo, CalendarRange,
-  AlertTriangle, BarChart3, Settings, Rocket
+  AlertTriangle, BarChart3, Settings, Rocket, Menu, X
 } from 'lucide-react'
 import { useProject } from '../hooks/useProject'
 import { StatusBadge, EmptyState } from './ui'
+import ThemeToggle from './ThemeToggle'
 
 const projectNavItems = [
   { to: 'board', label: 'Board', Icon: KanbanSquare },
@@ -25,13 +27,21 @@ export default function ProjectLayout() {
   const projectCtx = useProject(projectId)
   // Ensure we still expose the context for the children
   const { project, sprints, sprintId, setSprintId, loading, error } = projectCtx
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className="app-shell">
-      <aside className="sidebar project-sidebar">
-        <Link to="/projects" className="project-back-link">
-          <ChevronLeft size={15} /> Projects
-        </Link>
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+
+      <aside className={`sidebar project-sidebar${sidebarOpen ? ' sidebar-open' : ''}`}>
+        <div className="project-sidebar-top-row">
+          <Link to="/projects" className="project-back-link" onClick={() => setSidebarOpen(false)}>
+            <ChevronLeft size={15} /> Projects
+          </Link>
+          <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)} aria-label="Close menu">
+            <X size={18} />
+          </button>
+        </div>
 
         <div className="project-sidebar-title">
           {loading ? (
@@ -51,6 +61,7 @@ export default function ProjectLayout() {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
             >
               <item.Icon size={17} className="nav-icon" />
@@ -65,6 +76,7 @@ export default function ProjectLayout() {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
             >
               <item.Icon size={17} className="nav-icon" />
@@ -76,7 +88,16 @@ export default function ProjectLayout() {
 
       <div className="app-main-col">
         <header className="topbar project-topbar">
+          <button
+            className="hamburger-btn"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
           {project && <StatusBadge status={project.status} />}
+          <div className="topbar-spacer" />
+          <ThemeToggle />
           {/* SPRINT DROPDOWN REMOVED FROM HERE */}
         </header>
         <main className="main-content">
