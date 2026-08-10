@@ -27,20 +27,36 @@ public class PipelineService {
     @Autowired private ProjectRepository projectRepository; // assumes this exists already
 
     // Called by the webhook when GitHub Actions finishes a build
-    public Pipeline recordBuildResult(PipelineWebhookRequest req) {
+public Pipeline recordBuildResult(PipelineWebhookRequest req) {
         Project project = projectRepository.findById(req.getProjectId())
                 .orElseThrow(() -> new IllegalArgumentException("No project found with id " + req.getProjectId()));
 
         Pipeline pipeline = new Pipeline();
         pipeline.setStatus(req.getStatus());
-        pipeline.setDuration(req.getDuration());
         pipeline.setCommitHash(req.getCommitHash());
         pipeline.setCommitMessage(req.getCommitMessage());
         pipeline.setBranch(req.getBranch());
         pipeline.setTriggerSource(req.getTriggerSource());
-        pipeline.setStartedAt(LocalDateTime.now().minusSeconds(req.getDuration()));
+        
+        // --- NEW DURATION CALCULATION LOGIC ---
+        // Calculate total duration by summing up the individual stage durations
+        int totalDuration = 0;
+        if (req.getStages() != null) {
+            totalDuration = req.getStages().stream()
+                    .mapToInt(s -> s.durationSeconds)
+                    .sum();
+        }
+        
+        pipeline.setDuration(totalDuration);
+        
+        // Backdate the start time based on the calculated duration so the UI timestamps make sense
+        pipeline.setStartedAt(LocalDateTime.now().minusSeconds(totalDuration));
         pipeline.setFinishedAt(LocalDateTime.now());
+        // --------------------------------------
+
         pipeline.setProject(project);
+
+
 
         if (req.getStages() != null) {
             int order = 0;
