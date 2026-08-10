@@ -6,6 +6,7 @@ import com.nexus.NeuroForge.models.interfaces.TriggerSource;
 import com.nexus.NeuroForge.models.interfaces.PipelineStatus;
 import com.nexus.NeuroForge.models.interfaces.StageStatus;
 import com.nexus.NeuroForge.models.interfaces.TriggerSource;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class PipelineWebhookRequest {
@@ -18,6 +19,12 @@ public class PipelineWebhookRequest {
     private String environment;
     private boolean deploymentSuccess;
     private TriggerSource triggerSource;
+
+    // NEW: the real wall-clock time the pipeline started, sent by the CI
+    // workflow itself. Optional — if the caller doesn't send it (e.g. an
+    // older webhook payload), PipelineService falls back to deriving it
+    // from the stage durations like before.
+    private LocalDateTime startedAt;
 
     private List<StageDTO> stages;
     private TestSummaryDTO testSummary;
@@ -45,6 +52,8 @@ public class PipelineWebhookRequest {
     public void setCommitMessage(String commitMessage) { this.commitMessage = commitMessage; }
     public TriggerSource getTriggerSource() { return triggerSource; }
     public void setTriggerSource(TriggerSource triggerSource) { this.triggerSource = triggerSource; }
+    public LocalDateTime getStartedAt() { return startedAt; }
+    public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
     public List<StageDTO> getStages() { return stages; }
     public void setStages(List<StageDTO> stages) { this.stages = stages; }
     public TestSummaryDTO getTestSummary() { return testSummary; }
@@ -76,16 +85,4 @@ public class PipelineWebhookRequest {
         public double cpuPercent;
         public double memoryPercent;
     }
-
-
-
-
-
-
-
-
-
-
 }
-
-

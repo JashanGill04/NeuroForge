@@ -46,6 +46,12 @@ jobs:
           --health-retries 5
 
     steps:
+      - name: Record pipeline start
+        id: pipeline_timer
+        run: |
+          echo "start_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+          echo "start_iso=$(date -u +%Y-%m-%dT%H:%M:%S)" >> "$GITHUB_OUTPUT"
+
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
@@ -57,6 +63,10 @@ jobs:
           echo "hash=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "branch=${GITHUB_REF#refs/heads/}" >> "$GITHUB_OUTPUT"
           echo "msg=$(git log -1 --pretty=%B | tr '\n' ' ' | sed 's/"/\\"/g')" >> "$GITHUB_OUTPUT"
+
+      - name: Checkpoint - checkout done
+        id: checkout_timer
+        run: echo "end_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK 25
         uses: actions/setup-java@v4
@@ -79,6 +89,10 @@ jobs:
           echo "Executing static code analysis..."
           echo "Bugs: 0 | Vulnerabilities: 0 | Code Smells: 2"
           echo "Quality Gate Status: PASSED"
+
+      - name: Checkpoint - build & test done
+        id: build_timer
+        run: echo "end_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
 
       - name: Set image tag
         id: image
@@ -110,6 +124,10 @@ jobs:
         if: github.event.inputs.rollback == 'true'
         run: docker pull ghcr.io/${{ steps.image.outputs.repo }}:${{ steps.image.outputs.tag }}
 
+      - name: Checkpoint - docker build/push done
+        id: docker_timer
+        run: echo "end_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+
       - name: Run container
         run: |
           docker run -d -p 9001:9000 \
@@ -133,6 +151,26 @@ jobs:
           done
           echo "API failed to start in time."
           exit 1
+
+      - name: Checkpoint - deploy & health check done
+        id: deploy_timer
+        if: always()
+        run: echo "end_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+
+      - name: Compute stage durations
+        id: durations
+        if: always()
+        run: |
+          START=${{ steps.pipeline_timer.outputs.start_epoch }}
+          CHECKOUT_END=${{ steps.checkout_timer.outputs.end_epoch }}
+          BUILD_END=${{ steps.build_timer.outputs.end_epoch }}
+          DOCKER_END=${{ steps.docker_timer.outputs.end_epoch }}
+          DEPLOY_END=${{ steps.deploy_timer.outputs.end_epoch || steps.docker_timer.outputs.end_epoch }}
+
+          echo "checkout=$(( CHECKOUT_END - START ))" >> "$GITHUB_OUTPUT"
+          echo "build=$(( BUILD_END - CHECKOUT_END ))" >> "$GITHUB_OUTPUT"
+          echo "docker=$(( DOCKER_END - BUILD_END ))" >> "$GITHUB_OUTPUT"
+          echo "deploy=$(( DEPLOY_END - DOCKER_END ))" >> "$GITHUB_OUTPUT"
 
       - name: Collect container stats
         id: stats
@@ -193,6 +231,7 @@ jobs:
             "triggerSource": "GITHUB_ACTIONS",
             "environment": "${{ env.ENV_NAME }}",
             "deploymentSuccess": ${{ job.status == 'success' }},
+            "startedAt": "${{ steps.pipeline_timer.outputs.start_iso }}",
             "testSummary": {
               "passed": $(( ${{ steps.tests.outputs.total || 0 }} - ${{ steps.tests.outputs.failed || 0 }} - ${{ steps.tests.outputs.skipped || 0 }} )),
               "failed": ${{ steps.tests.outputs.failed || 0 }},
@@ -207,10 +246,10 @@ jobs:
               "memoryPercent": ${{ steps.stats.outputs.mem || 0 }}
             },
             "stages": [
-              { "name": "Checkout", "status": "SUCCESS", "durationSeconds": 5 },
-              { "name": "Build & Test", "status": "$STATUS", "durationSeconds": 25 },
-              { "name": "Docker Build & Push", "status": "$STATUS", "durationSeconds": 20 },
-              { "name": "Deploy & Health Check", "status": "$STATUS", "durationSeconds": 15 }
+              { "name": "Checkout", "status": "SUCCESS", "durationSeconds": ${{ steps.durations.outputs.checkout || 0 }} },
+              { "name": "Build & Test", "status": "$STATUS", "durationSeconds": ${{ steps.durations.outputs.build || 0 }} },
+              { "name": "Docker Build & Push", "status": "$STATUS", "durationSeconds": ${{ steps.durations.outputs.docker || 0 }} },
+              { "name": "Deploy & Health Check", "status": "$STATUS", "durationSeconds": ${{ steps.durations.outputs.deploy || 0 }} }
             ]
           }
           EOF

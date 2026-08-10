@@ -38,20 +38,37 @@ public Pipeline recordBuildResult(PipelineWebhookRequest req) {
         pipeline.setBranch(req.getBranch());
         pipeline.setTriggerSource(req.getTriggerSource());
         
-        // --- NEW DURATION CALCULATION LOGIC ---
-        // Calculate total duration by summing up the individual stage durations
+        // --- DURATION CALCULATION ---
+        // Total duration is still the sum of the individual stage durations,
+        // but those durations are now measured by the CI workflow itself
+        // (real elapsed seconds per stage) rather than hardcoded constants.
         int totalDuration = 0;
         if (req.getStages() != null) {
             totalDuration = req.getStages().stream()
                     .mapToInt(s -> s.durationSeconds)
                     .sum();
         }
-        
+
         pipeline.setDuration(totalDuration);
-        
-        // Backdate the start time based on the calculated duration so the UI timestamps make sense
-        pipeline.setStartedAt(LocalDateTime.now().minusSeconds(totalDuration));
-        pipeline.setFinishedAt(LocalDateTime.now());
+
+        // Snapshot "now" exactly once so finishedAt and any fallback math
+        // below are internally consistent instead of drifting between two
+        // separate now() calls.
+        LocalDateTime finishedAt = LocalDateTime.now();
+        pipeline.setFinishedAt(finishedAt);
+
+        // FIX: prefer the real pipeline start time the CI workflow sends.
+        // Only fall back to reconstructing it from totalDuration if the
+        // caller didn't provide one (e.g. an older/manual webhook call) —
+        // previously this backdating was the *only* path, which made
+        // startedAt a pure function of totalDuration and meant
+        // finishedAt - startedAt always trivially equaled the (fake)
+        // duration instead of reflecting a real elapsed time.
+        if (req.getStartedAt() != null) {
+            pipeline.setStartedAt(req.getStartedAt());
+        } else {
+            pipeline.setStartedAt(finishedAt.minusSeconds(totalDuration));
+        }
         // --------------------------------------
 
         pipeline.setProject(project);
