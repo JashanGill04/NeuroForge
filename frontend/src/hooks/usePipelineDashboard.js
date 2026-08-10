@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { pipelineService } from '../services/pipelineService'
 
 export function usePipelineDashboard() {
@@ -10,30 +10,33 @@ export function usePipelineDashboard() {
   const [selectedBuildId, setSelectedBuildId] = useState(null)
   const [buildDetails, setBuildDetails] = useState(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
-
-  // NEW: separate loading flags for the trigger/rollback actions so the
-  // buttons can show their own "in flight" state without blocking the rest
-  // of the dashboard.
+  
   const [triggering, setTriggering] = useState(false)
   const [rollingBack, setRollingBack] = useState(false)
 
-  const loadDashboard = useCallback((silent = false) => {
+  // Standard function defined in the hook scope
+  const loadDashboard = async (silent = false) => {
     if (!silent) setLoading(true)
-    return Promise.all([pipelineService.getKpis(), pipelineService.getHistory()])
-      .then(([k, b]) => {
-        setKpis(k)
-        setBuilds([...b].sort((a, c) => new Date(c.startedAt) - new Date(a.startedAt)))
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => {
-        if (!silent) setLoading(false)
-      })
-  }, [])
+    try {
+      const [k, b] = await Promise.all([
+        pipelineService.getKpis(),
+        pipelineService.getHistory()
+      ])
+      setKpis(k)
+      setBuilds([...b].sort((a, c) => new Date(c.startedAt) - new Date(a.startedAt)))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }
 
+  // Runs loadDashboard once when the component mounts
   useEffect(() => {
     loadDashboard()
-  }, [loadDashboard])
+  }, [])
 
+  // Fetch build details when selectedBuildId changes
   useEffect(() => {
     if (!selectedBuildId) {
       setBuildDetails(null)
@@ -46,8 +49,7 @@ export function usePipelineDashboard() {
       .finally(() => setLoadingDetails(false))
   }, [selectedBuildId])
 
-  // Lock background scroll while the modal is open so the page behind it
-  // can't shift/scroll and cause the flicker when the scrollbar appears.
+  // Lock background scroll while the modal is open
   useEffect(() => {
     if (!selectedBuildId) return
     const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
@@ -63,9 +65,6 @@ export function usePipelineDashboard() {
     }
   }, [selectedBuildId])
 
-  // NEW: dispatches a fresh build for the given project. Returns true/false
-  // so the page can show its own success message on top of this hook's
-  // error handling.
   const triggerBuild = async (projectId) => {
     setError('')
     setTriggering(true)
@@ -80,15 +79,13 @@ export function usePipelineDashboard() {
     }
   }
 
-  // NEW: rolls back a pipeline's deployment, closes the detail modal, and
-  // silently refreshes the build list/KPIs so the new (rolled-back) status
-  // shows up without a jarring full-page loading flash.
   const rollbackBuild = async (pipelineId) => {
     setError('')
     setRollingBack(true)
     try {
       await pipelineService.rollbackBuild(pipelineId)
       setSelectedBuildId(null)
+      // Calls loadDashboard silently to refresh the table/KPIs after rollback
       await loadDashboard(true)
       return true
     } catch (err) {

@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { X, Loader2, FolderKanban, RotateCcw } from 'lucide-react'
 import { STATUS_BADGE } from './pipelineConstants'
 import BuildOverviewSection from './BuildOverviewSection'
@@ -5,21 +6,10 @@ import BuildStagesTimeline from './BuildStagesTimeline'
 import TestMetricsCard from './TestMetricsCard'
 import DeploymentStatusCard from './DeploymentStatusCard'
 
-export default function BuildDetailModal({
-  buildId,
-  buildDetails,
-  loading,
-  onClose,
-  // NEW: rollback wiring. canEdit gates the button on role the same way the
-  // rest of the app does (canManage(roles[0])); rollbackEligible comes
-  // straight from the deployment the backend already computes.
-  canEdit,
-  onRollback,
-  rollingBack
-}) {
+export default function BuildDetailModal({ buildId, buildDetails, loading, onClose, canEdit, onRollback, rollingBack }) {
   const canRollback = canEdit && !loading && buildDetails?.deployment?.rollbackEligible
 
-  return (
+  return createPortal(
     <div className="bd-modal-overlay">
       <div className="panel bd-modal">
         <div className="bd-header">
@@ -35,7 +25,9 @@ export default function BuildDetailModal({
               <FolderKanban size={13} /> Project: {buildDetails?.projectName || 'NeuroForge Nexus'}
             </div>
           </div>
-          <div className="bd-header-actions">
+          
+          {/* Explicit flex row styling applied here to fix the vertical stacking */}
+          <div className="bd-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {canRollback && (
               <button
                 className="btn-danger-ghost"
@@ -80,6 +72,7 @@ export default function BuildDetailModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

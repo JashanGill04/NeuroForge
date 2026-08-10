@@ -10,9 +10,7 @@ import BuildsTable from '../../components/pipeline/BuildsTable'
 import BuildDetailModal from '../../components/pipeline/BuildDetailModal'
 
 export default function PipelineDashboard() {
-  // Same project context every other project-scoped page reads via
-  // ProjectLayout's <Outlet context={...} /> — gives us the real project id
-  // to trigger a build for, instead of a hardcoded one.
+
   const { project } = useOutletContext()
   const { roles } = useAuth()
   const canEdit = canManage(roles?.[0])
@@ -28,13 +26,13 @@ export default function PipelineDashboard() {
   const handleTrigger = async () => {
     setSuccess('')
     const ok = await triggerBuild(project.id)
-    if (ok) setSuccess('Build triggered — it will appear here once GitHub Actions reports back.')
+    if (ok) setSuccess('Build triggered - it will appear here once GitHub Actions reports back.')
   }
 
   const handleRollback = async (pipelineId) => {
     setSuccess('')
     const ok = await rollbackBuild(pipelineId)
-    if (ok) setSuccess('Rollback initiated — redeploying the last successful image.')
+    if (ok) setSuccess('Rollback initiated - redeploying the last successful image.')
   }
 
   return (
@@ -43,7 +41,7 @@ export default function PipelineDashboard() {
         <div>
           <h1>Pipeline &amp; Deployment Dashboard</h1>
           <p className="page-subtitle">
-            CI/CD build history and deployment status for {project?.name || 'this project'}.
+            CI/CD build history and deployment status across all projects.
           </p>
         </div>
         {canEdit && (
@@ -51,14 +49,15 @@ export default function PipelineDashboard() {
             className="btn-primary"
             onClick={handleTrigger}
             disabled={triggering || !project?.id}
-            title={!project?.id ? 'Loading project…' : 'Dispatch a new CI/CD build for this project'}
+            title={!project?.id ? 'Loading project...' : 'Dispatch a new CI/CD build for this project'}
           >
-            <Rocket size={16} /> {triggering ? 'Triggering…' : 'Trigger build'}
+            <Rocket size={16} /> {triggering ? 'Triggering...' : 'Trigger build'}
           </button>
         )}
       </div>
 
       {error && <Alert onClose={() => setError('')}>{error}</Alert>}
+      {/* Added the success toast/alert here */}
       {success && <Alert type="success" onClose={() => setSuccess('')}>{success}</Alert>}
 
       {loading || !kpis ? (
