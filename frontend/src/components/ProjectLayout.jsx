@@ -1,9 +1,8 @@
-// src/components/ProjectLayout.jsx (or wherever this is located)
 import { NavLink, Outlet, useParams, Link } from 'react-router-dom'
 import { useState } from 'react'
 import {
   ChevronLeft, KanbanSquare, ListTodo, CalendarRange,
-  AlertTriangle, BarChart3, Settings, Rocket, Menu, X
+  AlertTriangle, BarChart3, Settings, Rocket, Activity, Menu, X   // + Activity
 } from 'lucide-react'
 import { useProject } from '../hooks/useProject'
 import { StatusBadge, EmptyState } from './ui'
@@ -15,17 +14,21 @@ const projectNavItems = [
   { to: 'sprints', label: 'Sprints & Milestones', Icon: CalendarRange },
   { to: 'blockers', label: 'Blockers', Icon: AlertTriangle },
   { to: 'reports', label: 'Reports', Icon: BarChart3 },
-  { to: 'settings', label: 'Settings', Icon: Settings }
+  { to: 'settings', label: 'Settings', Icon: Settings },
 ]
 
 const milestone3NavItems = [
   { to: 'pipeline', label: 'Pipeline & Deployments', Icon: Rocket }
 ]
 
+// NEW — Milestone 4
+const milestone4NavItems = [
+  { to: 'releases', label: 'Releases & Monitoring', Icon: Activity }
+]
+
 export default function ProjectLayout() {
   const { projectId } = useParams()
   const projectCtx = useProject(projectId)
-  // Ensure we still expose the context for the children
   const { project, sprints, sprintId, setSprintId, loading, error } = projectCtx
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -73,18 +76,28 @@ export default function ProjectLayout() {
         <div className="nav-section-label">CI/CD</div>
         <nav className="nav-list">
           {milestone3NavItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
-            >
+            <NavLink key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
+              <item.Icon size={17} className="nav-icon" />
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* NEW */}
+        <div className="nav-section-label">Release Mgmt</div>
+        <nav className="nav-list">
+          {milestone4NavItems.map((item) => (
+            <NavLink key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
               <item.Icon size={17} className="nav-icon" />
               {item.label}
             </NavLink>
           ))}
         </nav>
       </aside>
+
+      
 
       <div className="app-main-col">
         <header className="topbar project-topbar">
@@ -98,7 +111,6 @@ export default function ProjectLayout() {
           {project && <StatusBadge status={project.status} />}
           <div className="topbar-spacer" />
           <ThemeToggle />
-          {/* SPRINT DROPDOWN REMOVED FROM HERE */}
         </header>
         <main className="main-content">
           {!loading && !project ? (

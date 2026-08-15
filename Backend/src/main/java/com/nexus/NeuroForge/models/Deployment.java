@@ -86,6 +86,7 @@ private boolean rollbackEligible;
     private Pipeline pipeline;
 
     @OneToOne(mappedBy = "deployment", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private Release release;
 
     public Deployment() {}

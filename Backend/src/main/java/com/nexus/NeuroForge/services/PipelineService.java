@@ -175,6 +175,7 @@ public Pipeline recordBuildResult(PipelineWebhookRequest req) {
         if (!p.getDeployments().isEmpty()) {
             Deployment d = p.getDeployments().get(p.getDeployments().size() - 1);
             var di = new PipelineDetailDTO.DeployInfo();
+            di.id = d.getId();   // NEW
             di.environment = d.getEnvironment().name();
             di.success = d.isSuccess();
             di.imageTag = d.getImageTag();

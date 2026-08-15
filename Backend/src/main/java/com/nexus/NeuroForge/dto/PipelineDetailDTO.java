@@ -29,6 +29,7 @@ public class PipelineDetailDTO {
     public double coveragePercent;
 }
     public static class DeployInfo {
+        public Long id;   // NEW
         public String environment;
         public boolean success;
         public String imageTag;
