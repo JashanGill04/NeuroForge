@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { releaseService } from '../../services/releaseService'
+import { releaseService } from '../../services/ReleaseService'
 import { Alert, Modal } from '../ui'
 
 export default function CreateReleaseModal({ onClose, onCreated, initialDeploymentId }) {
