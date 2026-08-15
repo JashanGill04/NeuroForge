@@ -2,7 +2,6 @@
 package com.nexus.NeuroForge.controllers;
 
 import com.nexus.NeuroForge.dto.*;
-import com.nexus.NeuroForge.models.Release;
 import com.nexus.NeuroForge.models.interfaces.DeploymentEnvironment;
 import com.nexus.NeuroForge.services.ReleaseService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,9 +16,15 @@ public class ReleaseController {
 
     @Autowired private ReleaseService releaseService;
 
+    // CHANGED: was `public Release createRelease(...)`. Returning the raw
+    // entity meant Jackson had to serialize release.getDeployment(), and
+    // Deployment.release (the mappedBy inverse side) points right back —
+    // Release -> Deployment -> Release -> ... until it blows the stack.
+    // toResponse() flattens it to plain fields, same shape getHistory()
+    // already returns, so nothing on the frontend needs to change.
     @PostMapping
-    public Release createRelease(@RequestBody CreateReleaseRequest request) {
-        return releaseService.createRelease(request);
+    public ReleaseResponse createRelease(@RequestBody CreateReleaseRequest request) {
+        return releaseService.toResponse(releaseService.createRelease(request));
     }
 
     @GetMapping
@@ -37,9 +42,14 @@ public class ReleaseController {
         return releaseService.getDetail(id);
     }
 
+    // CHANGED: same reasoning — this is what EnvironmentHealthPanel calls
+    // for all 4 environments on every page load. Returning the raw entity
+    // meant it 500'd every time there WAS an active release to show, which
+    // your frontend's error handling silently displayed as "No active
+    // release" — looking identical to the correct empty state.
     @GetMapping("/active/{environment}")
-    public Release getActiveRelease(@PathVariable DeploymentEnvironment environment) {
-        return releaseService.getActiveRelease(environment);
+    public ReleaseResponse getActiveRelease(@PathVariable DeploymentEnvironment environment) {
+        return releaseService.toResponse(releaseService.getActiveRelease(environment));
     }
 
     @PostMapping("/{id}/rollback")

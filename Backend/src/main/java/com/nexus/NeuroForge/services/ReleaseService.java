@@ -173,7 +173,30 @@ public class ReleaseService {
      * swappable for live-monitoring-derived values later without changing
      * the API contract.
      */
+    // Prometheus scrapes /actuator/prometheus roughly every 10-15s, and
+    // ObservabilityConfig registers FOUR separate gauges that each call
+    // getKpis() independently — without this, one scrape = 4 full table
+    // scans + aggregations. Cached for a few seconds so a scrape (or a
+    // burst of dashboard requests) only recomputes once; still short
+    // enough that a brand-new release or rollback shows up almost
+    // immediately, so it's not "hardcoded", just debounced.
+    private volatile ReleaseKpiDTO cachedKpis;
+    private volatile long cachedKpisAt = 0L;
+    private static final long KPI_CACHE_MS = 5000L;
+
     public ReleaseKpiDTO getKpis() {
+        long now = System.currentTimeMillis();
+        ReleaseKpiDTO cached = cachedKpis;
+        if (cached != null && (now - cachedKpisAt) < KPI_CACHE_MS) {
+            return cached;
+        }
+        ReleaseKpiDTO fresh = computeKpis();
+        cachedKpis = fresh;
+        cachedKpisAt = now;
+        return fresh;
+    }
+
+    private ReleaseKpiDTO computeKpis() {
         List<Release> all = releaseRepository.findAllByOrderByReleaseDateDesc();
         long total = all.size();
 
@@ -212,7 +235,7 @@ public class ReleaseService {
         return Math.round(value * 100.0) / 100.0;
     }
 
-    private ReleaseResponse toResponse(Release r) {
+    public ReleaseResponse toResponse(Release r) {
         Deployment d = r.getDeployment();
         return new ReleaseResponse(
                 r.getId(), r.getVersion(),

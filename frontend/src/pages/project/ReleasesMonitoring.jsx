@@ -131,7 +131,7 @@ export default function ReleasesMonitoring() {
     setSuccess('')
     setRollingBack(true)
     try {
-      await releaseService.rollback(releaseId)
+      await releaseService.rollbackRelease(releaseId)
       setSuccess('Rollback initiated — the previous release is being restored.')
       setSelectedReleaseId(null)
       refetchAll()
