@@ -1,94 +1,73 @@
-import { useState } from 'react'
-import { Rocket } from 'lucide-react'
-import { Alert, EmptyState } from '../../components/ui'
-import { useReleaseDashboard } from '../../hooks/useReleaseDashboard'
-import { useAuth } from '../../context/AuthContext'
-import { canManage } from '../../utils/roles'
-import ReleaseKpiStats from '../../components/releases/ReleaseKpiStats'
-import EnvironmentHealthPanel from '../../components/releases/EnvironmentHealthPanel'
-import ReleasesTable from '../../components/releases/ReleasesTable'
-import ReleaseDetailModal from '../../components/releases/ReleaseDetailModal'
-import CreateReleaseModal from '../../components/releases/CreateReleaseModal'
+import { useState, useEffect } from 'react'
+import { releaseService } from '../../services/releaseService'
+import { Alert, Modal } from '../ui'
 
-export default function ReleasesMonitoring() {
-  const { roles } = useAuth()
-  const canEdit = canManage(roles?.[0])
+export default function CreateReleaseModal({ onClose, onCreated, initialDeploymentId }) {
+  const [deploymentId, setDeploymentId] = useState(initialDeploymentId ?? '')
+  const [approved, setApproved] = useState(true)
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  const {
-    kpis, releases, loading, error, setError,
-    envHealth, loadingEnv,
-    selectedReleaseId, setSelectedReleaseId, releaseDetails, loadingDetails,
-    rollingBack, rollbackRelease,
-    refresh
-  } = useReleaseDashboard()
+  // The modal is only ever mounted while it's open (ReleasesMonitoring renders
+  // it conditionally), so the useState initializer above covers the normal
+  // case. This effect just guards the edge case where the parent flips
+  // initialDeploymentId while the modal is already mounted (e.g. clicking a
+  // second "Cut a release" link without the modal fully unmounting first).
+  useEffect(() => {
+    if (initialDeploymentId != null) {
+      setDeploymentId(String(initialDeploymentId))
+    }
+  }, [initialDeploymentId])
 
-  const [success, setSuccess] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
-
-  const handleRollback = async (releaseId) => {
-    setSuccess('')
-    const ok = await rollbackRelease(releaseId)
-    if (ok) setSuccess('Rollback initiated — the previous release is being redeployed.')
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSubmitting(true)
+    try {
+      const release = await releaseService.createRelease({
+        deploymentId: Number(deploymentId),
+        approved
+      })
+      onCreated(release)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h1>Release &amp; Deployment Monitoring</h1>
-          <p className="page-subtitle">
-            Blue-green releases, environment health, and rollback across every deployment target.
-          </p>
-        </div>
-        {canEdit && (
-          <button className="btn-primary" onClick={() => setShowCreate(true)}>
-            <Rocket size={16} /> Cut release
-          </button>
-        )}
-      </div>
-
-      {error && <Alert onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert type="success" onClose={() => setSuccess('')}>{success}</Alert>}
-
-      {loading || !kpis ? (
-        <EmptyState title="Loading release data…" />
-      ) : (
-        <>
-          <ReleaseKpiStats kpis={kpis} />
-
-          <EnvironmentHealthPanel envHealth={envHealth} loading={loadingEnv} />
-
-          <div className="panel">
-            <div className="panel-header">
-              <h2>Release history</h2>
-            </div>
-            <ReleasesTable releases={releases} onSelectRelease={setSelectedReleaseId} />
-          </div>
-        </>
-      )}
-
-      {selectedReleaseId && (
-        <ReleaseDetailModal
-          releaseId={selectedReleaseId}
-          releaseDetails={releaseDetails}
-          loading={loadingDetails}
-          onClose={() => setSelectedReleaseId(null)}
-          canEdit={canEdit}
-          onRollback={handleRollback}
-          rollingBack={rollingBack}
-        />
-      )}
-
-      {showCreate && (
-        <CreateReleaseModal
-          onClose={() => setShowCreate(false)}
-          onCreated={async () => {
-            setShowCreate(false)
-            setSuccess('Release cut successfully.')
-            await refresh()
-          }}
-        />
-      )}
-    </div>
+    <Modal title="Cut a new release" onClose={onClose}>
+      <Alert onClose={() => setError('')}>{error}</Alert>
+      <form onSubmit={handleSubmit} className="modal-form">
+        <label className="field">
+          <span>Deployment ID</span>
+          <input
+            type="number"
+            min="1"
+            value={deploymentId}
+            onChange={(e) => setDeploymentId(e.target.value)}
+            placeholder="e.g. 14"
+            required
+            autoFocus={initialDeploymentId == null}
+          />
+          {initialDeploymentId != null && (
+            <span className="field-hint">Pre-filled from the deployment you opened this from.</span>
+          )}
+        </label>
+        <label className="field field-inline">
+          <input
+            type="checkbox"
+            checked={approved}
+            onChange={(e) => setApproved(e.target.checked)}
+            style={{ width: 'auto' }}
+          />
+          <span>Approved for release</span>
+        </label>
+        <button className="btn-primary btn-block" type="submit" disabled={submitting}>
+          {submitting ? 'Cutting release…' : 'Cut release'}
+        </button>
+      </form>
+    </Modal>
   )
 }

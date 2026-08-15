@@ -84,6 +84,8 @@ export default function PipelineDashboard() {
           canEdit={canEdit}
           onRollback={handleRollback}
           rollingBack={rollingBack}
+          projectId={project?.id}
+
         />
       )}
     </div>

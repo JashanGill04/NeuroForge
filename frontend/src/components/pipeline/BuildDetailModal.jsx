@@ -6,7 +6,7 @@ import BuildStagesTimeline from './BuildStagesTimeline'
 import TestMetricsCard from './TestMetricsCard'
 import DeploymentStatusCard from './DeploymentStatusCard'
 
-export default function BuildDetailModal({ buildId, buildDetails, loading, onClose, canEdit, onRollback, rollingBack }) {
+export default function BuildDetailModal({ buildId, buildDetails, loading, onClose, canEdit, onRollback, rollingBack , projectId }) {
   const canRollback = canEdit && !loading && buildDetails?.deployment?.rollbackEligible
 
   return createPortal(
@@ -58,7 +58,7 @@ export default function BuildDetailModal({ buildId, buildDetails, loading, onClo
                 <BuildStagesTimeline stages={buildDetails.stages} />
                 <div className="bd-side-col">
                   <TestMetricsCard tests={buildDetails.tests} />
-                  <DeploymentStatusCard deployment={buildDetails.deployment} />
+                  <DeploymentStatusCard deployment={buildDetails.deployment} projectId={projectId} />
                 </div>
               </div>
             </>

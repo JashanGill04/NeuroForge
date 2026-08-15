@@ -1,6 +1,7 @@
-import { Box, Globe, Tag, HeartPulse, Cpu } from 'lucide-react'
+import { Box, Globe, Tag, HeartPulse, Cpu, ExternalLink, Hash } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
-export default function DeploymentStatusCard({ deployment }) {
+export default function DeploymentStatusCard({ deployment, projectId }) {
   if (!deployment) return null
 
   return (
@@ -9,6 +10,12 @@ export default function DeploymentStatusCard({ deployment }) {
         <Box size={14} /> Post-Build Deployment Status
       </h3>
       <div className="panel bd-deploy-panel">
+        {deployment.id != null && (
+          <div className="bd-deploy-row">
+            <span className="bd-deploy-label"><Hash size={14} /> Deployment ID</span>
+            <span className="bd-deploy-mono">#{deployment.id}</span>
+          </div>
+        )}
         <div className="bd-deploy-row">
           <span className="bd-deploy-label"><Globe size={14} /> Environment</span>
           <span className="badge badge-in_progress">{deployment.environment}</span>
@@ -39,6 +46,16 @@ export default function DeploymentStatusCard({ deployment }) {
           </div>
         </div>
       </div>
+
+      {deployment.id != null && deployment.success && projectId && (
+        <Link
+          className="btn-primary btn-block"
+          style={{ marginTop: 12, textDecoration: 'none', justifyContent: 'center' }}
+          to={`/projects/${projectId}/releases?deploymentId=${deployment.id}`}
+        >
+          <ExternalLink size={14} /> Cut a release from this deployment
+        </Link>
+      )}
     </div>
   )
 }
