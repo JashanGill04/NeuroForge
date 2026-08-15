@@ -5,12 +5,15 @@ import { Alert, EmptyState } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import { canManage } from '../../utils/roles'
 import { releaseService } from '../../services/ReleaseService'
+import { alertService } from '../../services/alertService'
 import { ENVIRONMENTS } from '../../components/releases/releaseConstants'
 import ReleaseKpiStats from '../../components/releases/ReleaseKpiStats'
 import EnvironmentHealthPanel from '../../components/releases/EnvironmentHealthPanel'
 import ReleasesTable from '../../components/releases/ReleasesTable'
 import CreateReleaseModal from '../../components/releases/CreateReleaseModal'
 import ReleaseDetailModal from '../../components/releases/ReleaseDetailModal'
+import AlertsPanel from '../../components/releases/AlertsPanel'
+import KpiTrendChart from '../../components/releases/KpiTrendChart'
 
 export default function ReleasesMonitoring() {
   const { project } = useOutletContext()
@@ -22,8 +25,11 @@ export default function ReleasesMonitoring() {
   const [kpis, setKpis] = useState(null)
   const [releases, setReleases] = useState([])
   const [envHealth, setEnvHealth] = useState({})
+  const [history, setHistory] = useState([])
+  const [alerts, setAlerts] = useState([])
   const [loading, setLoading] = useState(true)
   const [envLoading, setEnvLoading] = useState(true)
+  const [loadingAlerts, setLoadingAlerts] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -35,9 +41,9 @@ export default function ReleasesMonitoring() {
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [rollingBack, setRollingBack] = useState(false)
 
-  const fetchReleasesAndKpis = useCallback(async () => {
+  const fetchReleasesAndKpis = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const [releaseList, kpiData] = await Promise.all([
         releaseService.getHistory(),
         releaseService.getKpis()
@@ -47,12 +53,12 @@ export default function ReleasesMonitoring() {
     } catch (err) {
       setError(err.message || 'Failed to load releases.')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
-  const fetchEnvHealth = useCallback(async () => {
-    setEnvLoading(true)
+  const fetchEnvHealth = useCallback(async (silent = false) => {
+    if (!silent) setEnvLoading(true)
     // No active release in an environment is a normal, expected state (not
     // an error) — ReleaseService.getActiveRelease throws when none exists,
     // so a failed call just means "nothing live there yet".
@@ -66,16 +72,33 @@ export default function ReleasesMonitoring() {
       }
     })
     setEnvHealth(next)
-    setEnvLoading(false)
+    if (!silent) setEnvLoading(false)
   }, [])
 
-  const refetchAll = useCallback(() => {
-    fetchReleasesAndKpis()
-    fetchEnvHealth()
-  }, [fetchReleasesAndKpis, fetchEnvHealth])
+  const fetchAlerts = useCallback(async (silent = false) => {
+    if (!silent) setLoadingAlerts(true)
+    try {
+      const data = await alertService.getAlerts()
+      setAlerts(data || [])
+    } catch (err) {
+      // Don't surface alert-fetch failures as the page-level error banner —
+      // it's a secondary panel, shouldn't block the rest of the dashboard.
+      console.error('Failed to load alerts', err)
+    } finally {
+      if (!silent) setLoadingAlerts(false)
+    }
+  }, [])
+
+  const refetchAll = useCallback((silent = false) => {
+    fetchReleasesAndKpis(silent)
+    fetchEnvHealth(silent)
+    fetchAlerts(silent)
+  }, [fetchReleasesAndKpis, fetchEnvHealth, fetchAlerts])
 
   useEffect(() => {
     refetchAll()
+    const interval = setInterval(() => refetchAll(true), 15000)
+    return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -166,8 +189,9 @@ export default function ReleasesMonitoring() {
       ) : (
         <>
           <ReleaseKpiStats kpis={kpis} />
-
           <EnvironmentHealthPanel envHealth={envHealth} loading={envLoading} />
+          <AlertsPanel alerts={alerts} loading={loadingAlerts} />
+          <KpiTrendChart history={history} />
 
           <div className="panel">
             <div className="panel-header">
