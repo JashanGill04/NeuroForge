@@ -1,10 +1,13 @@
-// PipelineController.java
 package com.nexus.NeuroForge.controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nexus.NeuroForge.dto.*;
 import com.nexus.NeuroForge.models.Pipeline;
 import com.nexus.NeuroForge.services.PipelineService;
+import com.nexus.NeuroForge.services.ProjectIntegrationService;
+import com.nexus.NeuroForge.services.WebhookSignatureValidator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,10 +18,39 @@ import java.util.List;
 public class PipelineController {
 
     @Autowired private PipelineService pipelineService;
+    @Autowired private ProjectIntegrationService projectIntegrationService;
+    @Autowired private WebhookSignatureValidator webhookSignatureValidator;
+    @Autowired private ObjectMapper objectMapper;
 
     @PostMapping("/webhook")
-    public Pipeline receiveBuildResult(@RequestBody PipelineWebhookRequest request) {
-        return pipelineService.recordBuildResult(request);
+    public ResponseEntity<?> receiveBuildResult(
+            @RequestBody String rawBody,
+            @RequestHeader(value = "X-Hub-Signature-256", required = false) String signature) {
+
+        PipelineWebhookRequest request;
+        try {
+            request = objectMapper.readValue(rawBody, PipelineWebhookRequest.class);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Malformed webhook payload");
+        }
+
+        if (request.getProjectId() == null) {
+            return ResponseEntity.badRequest().body("projectId is required");
+        }
+
+        String webhookSecret;
+        try {
+            webhookSecret = projectIntegrationService.getEntityOrThrow(request.getProjectId()).getWebhookSecret();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+
+        if (!webhookSignatureValidator.isValid(rawBody, signature, webhookSecret)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid webhook signature");
+        }
+
+        Pipeline result = pipelineService.recordBuildResult(request);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping
@@ -36,14 +68,12 @@ public class PipelineController {
         return pipelineService.getDetail(id);
     }
 
-    // NEW: Endpoint to manually trigger a build
     @PostMapping("/trigger/{projectId}")
     public ResponseEntity<String> triggerPipeline(@PathVariable Long projectId) {
         pipelineService.triggerJenkinsBuild(projectId);
         return ResponseEntity.ok("Pipeline triggered successfully");
     }
 
-    // NEW: Endpoint to rollback a specific deployment
     @PostMapping("/{pipelineId}/rollback")
     public ResponseEntity<String> rollbackDeployment(@PathVariable Long pipelineId) {
         pipelineService.executeRollback(pipelineId);

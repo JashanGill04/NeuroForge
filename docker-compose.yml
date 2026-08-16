@@ -82,6 +82,8 @@ services:
       GITHUB_PAT: ${GITHUB_PAT}
       GITHUB_OWNER: ${GITHUB_OWNER}
       GITHUB_REPO: ${GITHUB_REPO}
+      APP_ENCRYPTION_SECRET: ${APP_ENCRYPTION_SECRET}
+      APP_ENCRYPTION_SALT: ${APP_ENCRYPTION_SALT}
     depends_on:
       postgres:
         condition: service_healthy
