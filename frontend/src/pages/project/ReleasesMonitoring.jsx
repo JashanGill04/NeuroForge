@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import { canManage } from '../../utils/roles'
 import { releaseService } from '../../services/ReleaseService'
 import { alertService } from '../../services/alertService'
+import { kpiHistoryService } from '../../services/kpiHistoryService'
 import { ENVIRONMENTS } from '../../components/releases/releaseConstants'
 import ReleaseKpiStats from '../../components/releases/ReleaseKpiStats'
 import EnvironmentHealthPanel from '../../components/releases/EnvironmentHealthPanel'
@@ -59,9 +60,6 @@ export default function ReleasesMonitoring() {
 
   const fetchEnvHealth = useCallback(async (silent = false) => {
     if (!silent) setEnvLoading(true)
-    // No active release in an environment is a normal, expected state (not
-    // an error) — ReleaseService.getActiveRelease throws when none exists,
-    // so a failed call just means "nothing live there yet".
     const results = await Promise.allSettled(
       ENVIRONMENTS.map((env) => releaseService.getActiveRelease(env))
     )
@@ -81,11 +79,18 @@ export default function ReleasesMonitoring() {
       const data = await alertService.getAlerts()
       setAlerts(data || [])
     } catch (err) {
-      // Don't surface alert-fetch failures as the page-level error banner —
-      // it's a secondary panel, shouldn't block the rest of the dashboard.
       console.error('Failed to load alerts', err)
     } finally {
       if (!silent) setLoadingAlerts(false)
+    }
+  }, [])
+
+  const fetchHistory = useCallback(async (silent = false) => {
+    try {
+      const data = await kpiHistoryService.getHistory(24)
+      setHistory(data || [])
+    } catch (err) {
+      console.error('Failed to load KPI history', err)
     }
   }, [])
 
@@ -93,7 +98,8 @@ export default function ReleasesMonitoring() {
     fetchReleasesAndKpis(silent)
     fetchEnvHealth(silent)
     fetchAlerts(silent)
-  }, [fetchReleasesAndKpis, fetchEnvHealth, fetchAlerts])
+    fetchHistory(silent)
+  }, [fetchReleasesAndKpis, fetchEnvHealth, fetchAlerts, fetchHistory])
 
   useEffect(() => {
     refetchAll()
@@ -102,16 +108,11 @@ export default function ReleasesMonitoring() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // --- Auto-open + pre-fill from DeploymentStatusCard's "Cut a release" link ---
-  // Link shape: /projects/{id}/releases?deploymentId={id}
   useEffect(() => {
     const deploymentId = searchParams.get('deploymentId')
     if (deploymentId) {
       setPrefillDeploymentId(Number(deploymentId))
       setIsCreateModalOpen(true)
-      // Strip the query param immediately so a refresh, a manual "Cut
-      // release" click afterwards, or navigating back doesn't reopen the
-      // modal with a stale/unintended deployment id pre-filled.
       const next = new URLSearchParams(searchParams)
       next.delete('deploymentId')
       setSearchParams(next, { replace: true })
