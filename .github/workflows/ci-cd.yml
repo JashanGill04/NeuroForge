@@ -3,7 +3,7 @@ name: NeuroForge-payment-service-ci-cd
 on:
   push:
     branches:
-      - main
+      - feature/multi-tenant-github-integration
   workflow_dispatch:
     inputs:
       rollback:
