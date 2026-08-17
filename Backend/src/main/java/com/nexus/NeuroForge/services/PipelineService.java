@@ -234,8 +234,7 @@ public Pipeline recordBuildResult(PipelineWebhookRequest req) {
 
         dispatchWorkflow(integration, Map.of(
                 "rollback", "false",
-                "image_tag", "",
-                "project_id", String.valueOf(projectId)
+                "image_tag", ""
         ));
     }
 
@@ -262,8 +261,7 @@ public Pipeline recordBuildResult(PipelineWebhookRequest req) {
 
         dispatchWorkflow(integration, Map.of(
                 "rollback", "true",
-                "image_tag", previousGood.getImageTag(),
-                "project_id", String.valueOf(pipeline.getProject().getId())
+                "image_tag", previousGood.getImageTag()
         ));
     }
 

@@ -2,7 +2,7 @@
 INSERT INTO team (id, name) VALUES (1, 'NeuroForge Core');
 
 INSERT INTO users (id, username, email, keycloak_id, role, active, team_id) VALUES
-(1, 'RajanGill04', 'rajan@example.com', 'kc-admin-1', 'ADMIN', true, 1),
+(1, 'JashanGill04', 'rajan@example.com', 'kc-admin-1', 'ADMIN', true, 1),
 (2, 'dev_user', 'dev@example.com', 'kc-dev-2', 'DEVELOPER', true, 1),
 (3, 'tester_user', 'tester@example.com', 'kc-test-3', 'TESTER', true, 1);
 
