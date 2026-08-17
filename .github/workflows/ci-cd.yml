@@ -18,7 +18,7 @@ on:
         description: 'NeuroForge project ID this build belongs to'
         required: false
         type: string
-        default: '1'
+        default: '2'
       environment:
         description: 'Deployment environment'
         required: false
@@ -31,7 +31,7 @@ env:
   # project actually triggered it. Now they come from the workflow_dispatch
   # inputs the backend sends, and only fall back to defaults for a plain
   # `git push` (which has no inputs to read from).
-  PROJECT_ID: ${{ github.event.inputs.project_id || '1' }}
+  PROJECT_ID: ${{ github.event.inputs.project_id || '2' }}
   ENV_NAME: ${{ github.event.inputs.environment || 'STAGING' }}
 
 permissions:
