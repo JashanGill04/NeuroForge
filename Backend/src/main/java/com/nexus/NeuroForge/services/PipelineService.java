@@ -190,14 +190,14 @@ public Pipeline recordBuildResult(PipelineWebhookRequest req) {
         return dto;
     }
 
-    public List<PipelineResponse> getHistory() {
-        return pipelineRepository.findAll().stream()
+    public List<PipelineResponse> getHistory(Long projectId) {
+        return pipelineRepository.findByProject_IdOrderByStartedAtDesc(projectId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
-    public PipelineKpiDTO getKpis() {
-        List<Pipeline> all = pipelineRepository.findAll();
+    public PipelineKpiDTO getKpis(Long projectId) {
+        List<Pipeline> all = pipelineRepository.findByProject_IdOrderByStartedAtDesc(projectId);
         long total = all.size();
         long successCount = all.stream()
                 .filter(p -> p.getStatus().name().equals("SUCCESS"))
@@ -281,5 +281,44 @@ public Pipeline recordBuildResult(PipelineWebhookRequest req) {
 
         Map<String, Object> body = Map.of("ref", integration.getGithubBranch(), "inputs", inputs);
         restTemplate.postForEntity(url, new HttpEntity<>(body, headers), String.class);
+    }
+
+    /**
+     * Platform-wide KPIs, aggregated across ALL projects — used by
+     * AlertMonitoringService / KpiSnapshotScheduler, which need one global
+     * reading rather than a per-project one. Per-project KPIs (dashboard UI)
+     * still go through getKpis(Long projectId).
+     */
+    public PipelineKpiDTO getPlatformKpis() {
+        long now = System.currentTimeMillis();
+        if (cachedPlatformKpis != null && (now - cachedPlatformKpisAt) < KPI_CACHE_MS) {
+            return cachedPlatformKpis;
+        }
+        PipelineKpiDTO fresh = computePlatformKpis();
+        cachedPlatformKpis = fresh;
+        cachedPlatformKpisAt = now;
+        return fresh;
+    }
+
+    private volatile PipelineKpiDTO cachedPlatformKpis;
+    private volatile long cachedPlatformKpisAt = 0L;
+    private static final long KPI_CACHE_MS = 60_000; // match ReleaseService's cache window
+
+    private PipelineKpiDTO computePlatformKpis() {
+        List<Pipeline> all = pipelineRepository.findAllByOrderByStartedAtDesc();
+        long total = all.size();
+
+        long successCount = all.stream()
+                .filter(p -> p.getStatus().name().equals("SUCCESS"))
+                .count();
+        double successRate = total == 0 ? 0 : (successCount * 100.0) / total;
+
+        double avgDuration = all.stream().mapToInt(Pipeline::getDuration).average().orElse(0) / 60.0;
+
+        long today = all.stream()
+                .filter(p -> p.getFinishedAt() != null && p.getFinishedAt().toLocalDate().equals(LocalDate.now()))
+                .count();
+
+        return new PipelineKpiDTO(total, successRate, avgDuration, today);
     }
 }

@@ -11,10 +11,11 @@
 import client from '../api/client'
 
 export const releaseService = {
-  getHistory: () => client.get('/releases').then((r) => r.data),
-  getKpis: () => client.get('/releases/kpi').then((r) => r.data),
+  getHistory: (projectId) => client.get('/releases', { params: { projectId } }).then((r) => r.data),
+  getKpis: (projectId) => client.get('/releases/kpi', { params: { projectId } }).then((r) => r.data),
   getDetail: (id) => client.get(`/releases/${id}`).then((r) => r.data),
-  getActiveRelease: (environment) => client.get(`/releases/active/${environment}`).then((r) => r.data),
+  getActiveRelease: (projectId, environment) =>
+    client.get(`/releases/active/${environment}`, { params: { projectId } }).then((r) => r.data),
   createRelease: (payload) => client.post('/releases', payload).then((r) => r.data),
   rollbackRelease: (id) => client.post(`/releases/${id}/rollback`).then((r) => r.data)
 }

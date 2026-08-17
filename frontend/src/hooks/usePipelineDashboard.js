@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { pipelineService } from '../services/pipelineService'
 
-export function usePipelineDashboard() {
+export function usePipelineDashboard(projectId) {
   const [kpis, setKpis] = useState(null)
   const [builds, setBuilds] = useState([])
   const [loading, setLoading] = useState(true)
@@ -19,8 +19,8 @@ export function usePipelineDashboard() {
     if (!silent) setLoading(true)
     try {
       const [k, b] = await Promise.all([
-        pipelineService.getKpis(),
-        pipelineService.getHistory()
+        pipelineService.getKpis(projectId),
+        pipelineService.getHistory(projectId)
       ])
       setKpis(k)
       setBuilds([...b].sort((a, c) => new Date(c.startedAt) - new Date(a.startedAt)))
@@ -32,9 +32,9 @@ export function usePipelineDashboard() {
   }
 
   // Runs loadDashboard once when the component mounts
-  useEffect(() => {
-    loadDashboard()
-  }, [])
+ useEffect(() => {
+    if (projectId) loadDashboard()
+  }, [projectId])
 
   // Fetch build details when selectedBuildId changes
   useEffect(() => {

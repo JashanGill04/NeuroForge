@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/pipelines")
@@ -49,18 +50,20 @@ public class PipelineController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid webhook signature");
         }
 
-        Pipeline result = pipelineService.recordBuildResult(request);
-        return ResponseEntity.ok(result);
+        Pipeline saved = pipelineService.recordBuildResult(request);
+        return ResponseEntity.ok(Map.of(
+                "status", "recorded",
+                "pipelineId", saved.getId()
+        ));
     }
-
     @GetMapping
-    public List<PipelineResponse> getHistory() {
-        return pipelineService.getHistory();
+    public List<PipelineResponse> getHistory(@RequestParam Long projectId) {
+        return pipelineService.getHistory(projectId);
     }
 
     @GetMapping("/kpi")
-    public PipelineKpiDTO getKpis() {
-        return pipelineService.getKpis();
+    public PipelineKpiDTO getKpis(@RequestParam Long projectId) {
+        return pipelineService.getKpis(projectId);
     }
 
     @GetMapping("/{id}")

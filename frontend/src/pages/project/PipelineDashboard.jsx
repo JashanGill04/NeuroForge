@@ -19,7 +19,7 @@ export default function PipelineDashboard() {
     kpis, builds, loading, error, setError,
     selectedBuildId, setSelectedBuildId, buildDetails, loadingDetails,
     triggering, rollingBack, triggerBuild, rollbackBuild
-  } = usePipelineDashboard()
+  } = usePipelineDashboard(project?.id)
 
   const [success, setSuccess] = useState('')
 
