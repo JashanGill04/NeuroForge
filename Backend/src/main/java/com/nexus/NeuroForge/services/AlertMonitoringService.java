@@ -72,8 +72,8 @@ public class AlertMonitoringService {
     }
 
     private Map<AlertMetric, Double> currentMetricValues() {
-        ReleaseKpiDTO r = releaseService.getKpis();
-        PipelineKpiDTO p = pipelineService.getKpis();
+        ReleaseKpiDTO r = releaseService.getPlatformKpis();
+        PipelineKpiDTO p = pipelineService.getPlatformKpis();
         Map<AlertMetric, Double> values = new EnumMap<>(AlertMetric.class);
         values.put(AlertMetric.UPTIME_PERCENT, r.uptimePercent);
         values.put(AlertMetric.MTTR_MINUTES, r.mttrMinutes);

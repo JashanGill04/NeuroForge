@@ -2,15 +2,20 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { projectsApi } from '../../api/projects'
 import { teamsApi } from '../../api/teams'
+import { useAuth } from '../../context/AuthContext'
+import { canManage } from '../../utils/roles'
 import { Alert } from '../../components/ui'
 import ProjectSettingsForm from '../../components/settings/ProjectSettingsForm'
 import DangerZone from '../../components/settings/DangerZone'
 import ProjectOverviewCard from '../../components/settings/ProjectOverviewCard'
+import GithubIntegrationForm from '../../components/settings/GithubIntegrationForm'
 import './Settings.css'
 
 export default function Settings() {
   const { project, reloadProject } = useOutletContext()
   const navigate = useNavigate()
+  const { roles } = useAuth()
+  const canEdit = canManage(roles?.[0])
 
   const [teams, setTeams] = useState([])
   const [status, setStatus] = useState('')
@@ -82,6 +87,8 @@ export default function Settings() {
 
       <Alert onClose={() => setError('')}>{error}</Alert>
       <Alert type="success" onClose={() => setSuccess('')}>{success}</Alert>
+
+      <GithubIntegrationForm projectId={project.id} canEdit={canEdit} />
 
       <div className="ps-layout">
         <div className="panel">

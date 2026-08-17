@@ -14,11 +14,6 @@ on:
         description: 'Image tag to redeploy when rollback=true (e.g. the git SHA)'
         required: false
         type: string
-      project_id:
-        description: 'NeuroForge project ID this build belongs to'
-        required: false
-        type: string
-        default: '1'
       environment:
         description: 'Deployment environment'
         required: false
@@ -31,8 +26,8 @@ env:
   # project actually triggered it. Now they come from the workflow_dispatch
   # inputs the backend sends, and only fall back to defaults for a plain
   # `git push` (which has no inputs to read from).
-  PROJECT_ID: ${{ github.event.inputs.project_id || '1' }}
-  ENV_NAME: ${{ github.event.inputs.environment || 'STAGING' }}
+  PROJECT_ID: ${{ vars.PROJECT_ID }}
+  ENV_NAME: ${{ github.event.inputs.environment || vars.DEPLOY_ENV || 'STAGING' }}
 
 permissions:
   contents: read
@@ -267,11 +262,11 @@ jobs:
 
       - name: Send webhook to controller
         if: always()
+        env:
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
         run: |
           STATUS="${{ job.status == 'success' && 'SUCCESS' || 'FAILED' }}"
-          curl -s -X POST "${{ secrets.CONTROLLER_URL }}" \
-            -H "Content-Type: application/json" \
-            -d @- <<EOF
+          PAYLOAD=$(cat <<EOF
           {
             "projectId": ${{ env.PROJECT_ID }},
             "status": "$STATUS",
@@ -303,6 +298,14 @@ jobs:
             ]
           }
           EOF
+          )
+
+          SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | sed 's/^.* //')
+
+          curl -s -X POST "${{ secrets.CONTROLLER_URL }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: sha256=$SIGNATURE" \
+            -d "$PAYLOAD"
 
       - name: Rollback on failure
         if: failure()

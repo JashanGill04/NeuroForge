@@ -19,8 +19,8 @@ public class KpiSnapshotScheduler {
 
     @Scheduled(fixedRate = 300000) // every 5 minutes
     public void snapshot() {
-        ReleaseKpiDTO r = releaseService.getKpis();
-        PipelineKpiDTO p = pipelineService.getKpis();
+        ReleaseKpiDTO r = releaseService.getPlatformKpis();
+        PipelineKpiDTO p = pipelineService.getPlatformKpis();
 
         KpiSnapshot snap = new KpiSnapshot();
         snap.setCapturedAt(LocalDateTime.now());

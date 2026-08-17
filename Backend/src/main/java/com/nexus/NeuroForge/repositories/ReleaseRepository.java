@@ -21,5 +21,25 @@ public interface ReleaseRepository extends JpaRepository<Release, Long> {
 
     List<Release> findAllByOrderByReleaseDateDesc();
 
+
+    List<Release> findByDeployment_Pipeline_Project_IdOrderByReleaseDateDesc(Long projectId);
+
+    Optional<Release> findTopByEnvironmentAndActiveTrueAndDeployment_Pipeline_Project_IdOrderByReleaseDateDesc(
+            DeploymentEnvironment environment, Long projectId);
+
+    List<Release> findByEnvironmentAndDeployment_Pipeline_Project_IdOrderByReleaseDateDesc(
+            DeploymentEnvironment environment, Long projectId);
+
+    long countByReleaseDateBetweenAndDeployment_Pipeline_Project_Id(
+            LocalDateTime start, LocalDateTime end, Long projectId);
+
+
+
+
+
+
+
+
+
     long countByReleaseDateBetween(LocalDateTime start, LocalDateTime end);
 }

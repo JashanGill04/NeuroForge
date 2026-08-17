@@ -190,14 +190,14 @@ public Pipeline recordBuildResult(PipelineWebhookRequest req) {
         return dto;
     }
 
-    public List<PipelineResponse> getHistory() {
-        return pipelineRepository.findAll().stream()
+    public List<PipelineResponse> getHistory(Long projectId) {
+        return pipelineRepository.findByProject_IdOrderByStartedAtDesc(projectId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
-    public PipelineKpiDTO getKpis() {
-        List<Pipeline> all = pipelineRepository.findAll();
+    public PipelineKpiDTO getKpis(Long projectId) {
+        List<Pipeline> all = pipelineRepository.findByProject_IdOrderByStartedAtDesc(projectId);
         long total = all.size();
         long successCount = all.stream()
                 .filter(p -> p.getStatus().name().equals("SUCCESS"))
@@ -224,40 +224,21 @@ public Pipeline recordBuildResult(PipelineWebhookRequest req) {
 
     @Autowired private RestTemplate restTemplate;
 
-    @Value("${github.token}")
-    private String githubToken;
-
-    @Value("${github.owner}")
-    private String githubOwner;
-
-    @Value("${github.repo}")
-    private String githubRepo;
-
-    @Value("${github.workflow-file:ci-cd.yml}")
-    private String githubWorkflowFile;
-
-    @Value("${github.branch:main}")
-    private String githubBranch;
+    @Autowired private ProjectIntegrationService projectIntegrationService;
 
     public void triggerJenkinsBuild(Long projectId) {
-        // 1. Verify project exists
         projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("No project found with id " + projectId));
 
-        // 2. Dispatch the GitHub Actions workflow with the normal (non-rollback)
-        //    inputs. FIX: project_id used to be omitted here entirely, so every
-        //    triggered build fell back to the workflow's default ('1') and got
-        //    recorded against Project 1 no matter which project's dashboard the
-        //    trigger actually came from.
-        dispatchWorkflow(Map.of(
+        var integration = projectIntegrationService.getEntityOrThrow(projectId);
+
+        dispatchWorkflow(integration, Map.of(
                 "rollback", "false",
-                "image_tag", "",
-                "project_id", String.valueOf(projectId)
+                "image_tag", ""
         ));
     }
 
     public void executeRollback(Long pipelineId) {
-        // 1. Fetch the pipeline and its deployments
         Pipeline pipeline = pipelineRepository.findById(pipelineId)
                 .orElseThrow(() -> new IllegalArgumentException("Pipeline not found"));
 
@@ -270,41 +251,72 @@ public Pipeline recordBuildResult(PipelineWebhookRequest req) {
             throw new IllegalStateException("This deployment is not eligible for rollback.");
         }
 
-        // 2. Find the last deployment that actually succeeded, in the SAME environment,
-        //    from an earlier pipeline run — that's the image we want to redeploy.
         DeploymentEnvironment env = latest.getEnvironment();
         Deployment previousGood = deploymentRepository
                 .findTopByPipeline_Project_IdAndEnvironmentAndSuccessTrueAndPipeline_IdNotOrderByDeployedAtDesc(
                         pipeline.getProject().getId(), env, pipeline.getId())
                 .orElseThrow(() -> new IllegalStateException("No previous successful deployment found to roll back to."));
 
-        // 3. Dispatch the workflow in rollback mode, telling it which image tag
-        //    to redeploy. FIX: same project_id omission as triggerJenkinsBuild
-        //    — without it, a rollback triggered from any project's dashboard
-        //    was silently reported against Project 1.
-        dispatchWorkflow(Map.of(
+        var integration = projectIntegrationService.getEntityOrThrow(pipeline.getProject().getId());
+
+        dispatchWorkflow(integration, Map.of(
                 "rollback", "true",
-                "image_tag", previousGood.getImageTag(),
-                "project_id", String.valueOf(pipeline.getProject().getId())
+                "image_tag", previousGood.getImageTag()
         ));
     }
 
-    private void dispatchWorkflow(Map<String, String> inputs) {
+    private void dispatchWorkflow(com.nexus.NeuroForge.models.ProjectIntegration integration, Map<String, String> inputs) {
         String url = String.format(
                 "https://api.github.com/repos/%s/%s/actions/workflows/%s/dispatches",
-                githubOwner, githubRepo, githubWorkflowFile);
+                integration.getGithubOwner(), integration.getGithubRepo(), integration.getWorkflowFile());
+
+        String token = projectIntegrationService.decryptToken(integration);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + githubToken);
+        headers.set("Authorization", "Bearer " + token);
         headers.set("Accept", "application/vnd.github+json");
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        Map<String, Object> body = Map.of(
-                "ref", githubBranch,
-                "inputs", inputs
-        );
+        Map<String, Object> body = Map.of("ref", integration.getGithubBranch(), "inputs", inputs);
+        restTemplate.postForEntity(url, new HttpEntity<>(body, headers), String.class);
+    }
 
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-        restTemplate.postForEntity(url, entity, String.class);
+    /**
+     * Platform-wide KPIs, aggregated across ALL projects — used by
+     * AlertMonitoringService / KpiSnapshotScheduler, which need one global
+     * reading rather than a per-project one. Per-project KPIs (dashboard UI)
+     * still go through getKpis(Long projectId).
+     */
+    public PipelineKpiDTO getPlatformKpis() {
+        long now = System.currentTimeMillis();
+        if (cachedPlatformKpis != null && (now - cachedPlatformKpisAt) < KPI_CACHE_MS) {
+            return cachedPlatformKpis;
+        }
+        PipelineKpiDTO fresh = computePlatformKpis();
+        cachedPlatformKpis = fresh;
+        cachedPlatformKpisAt = now;
+        return fresh;
+    }
+
+    private volatile PipelineKpiDTO cachedPlatformKpis;
+    private volatile long cachedPlatformKpisAt = 0L;
+    private static final long KPI_CACHE_MS = 60_000; // match ReleaseService's cache window
+
+    private PipelineKpiDTO computePlatformKpis() {
+        List<Pipeline> all = pipelineRepository.findAllByOrderByStartedAtDesc();
+        long total = all.size();
+
+        long successCount = all.stream()
+                .filter(p -> p.getStatus().name().equals("SUCCESS"))
+                .count();
+        double successRate = total == 0 ? 0 : (successCount * 100.0) / total;
+
+        double avgDuration = all.stream().mapToInt(Pipeline::getDuration).average().orElse(0) / 60.0;
+
+        long today = all.stream()
+                .filter(p -> p.getFinishedAt() != null && p.getFinishedAt().toLocalDate().equals(LocalDate.now()))
+                .count();
+
+        return new PipelineKpiDTO(total, successRate, avgDuration, today);
     }
 }

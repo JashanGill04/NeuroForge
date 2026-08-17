@@ -79,9 +79,8 @@ services:
       KEYCLOAK_ISSUER: http://localhost:8080/realms/neuroforge-nexus
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-unused}
       KEYCLOAK_ADMIN_SERVER_URL: http://keycloak:8080
-      GITHUB_PAT: ${GITHUB_PAT}
-      GITHUB_OWNER: ${GITHUB_OWNER}
-      GITHUB_REPO: ${GITHUB_REPO}
+      APP_ENCRYPTION_SECRET: ${APP_ENCRYPTION_SECRET}
+      APP_ENCRYPTION_SALT: ${APP_ENCRYPTION_SALT}
     depends_on:
       postgres:
         condition: service_healthy

@@ -42,26 +42,26 @@ export default function ReleasesMonitoring() {
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [rollingBack, setRollingBack] = useState(false)
 
-  const fetchReleasesAndKpis = useCallback(async (silent = false) => {
-    try {
-      if (!silent) setLoading(true)
-      const [releaseList, kpiData] = await Promise.all([
-        releaseService.getHistory(),
-        releaseService.getKpis()
-      ])
-      setReleases(releaseList || [])
-      setKpis(kpiData || null)
-    } catch (err) {
-      setError(err.message || 'Failed to load releases.')
-    } finally {
-      if (!silent) setLoading(false)
-    }
-  }, [])
+const fetchReleasesAndKpis = useCallback(async (silent = false) => {
+  try {
+    if (!silent) setLoading(true)
+    const [releaseList, kpiData] = await Promise.all([
+      releaseService.getHistory(project.id),
+      releaseService.getKpis(project.id)
+    ])
+    setReleases(releaseList || [])
+    setKpis(kpiData || null)
+  } catch (err) {
+    setError(err.message || 'Failed to load releases.')
+  } finally {
+    if (!silent) setLoading(false)
+  }
+}, [project?.id])
 
   const fetchEnvHealth = useCallback(async (silent = false) => {
     if (!silent) setEnvLoading(true)
     const results = await Promise.allSettled(
-      ENVIRONMENTS.map((env) => releaseService.getActiveRelease(env))
+      ENVIRONMENTS.map((env) => releaseService.getActiveRelease(project.id, env))
     )
     const next = {}
     ENVIRONMENTS.forEach((env, i) => {
@@ -71,7 +71,7 @@ export default function ReleasesMonitoring() {
     })
     setEnvHealth(next)
     if (!silent) setEnvLoading(false)
-  }, [])
+  }, [project?.id])
 
   const fetchAlerts = useCallback(async (silent = false) => {
     if (!silent) setLoadingAlerts(true)

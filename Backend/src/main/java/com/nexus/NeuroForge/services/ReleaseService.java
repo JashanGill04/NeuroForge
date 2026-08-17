@@ -17,7 +17,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,7 +38,11 @@ public class ReleaseService {
      * Cuts a new Release from a successful Deployment and promotes it to
      * live traffic in its environment (the "green" side goes live, the
      * previously active release becomes the standby "blue" side, or vice
-     * versa).
+     * versa). Scoped per-project: the "currently active" lookup for the
+     * blue-green swap only considers releases belonging to the SAME
+     * project as the deployment being released, so two projects deploying
+     * to the same environment name (e.g. both to STAGING) never step on
+     * each other's active release.
      */
     public Release createRelease(CreateReleaseRequest req) {
         Deployment deployment = deploymentRepository.findById(req.getDeploymentId())
@@ -50,9 +56,10 @@ public class ReleaseService {
             throw new IllegalStateException("A release already exists for this deployment.");
         }
 
+        Long projectId = deployment.getPipeline().getProject().getId();
         DeploymentEnvironment env = deployment.getEnvironment();
         Optional<Release> currentlyActive = releaseRepository
-                .findTopByEnvironmentAndActiveTrueOrderByReleaseDateDesc(env);
+                .findTopByEnvironmentAndActiveTrueAndDeployment_Pipeline_Project_IdOrderByReleaseDateDesc(env, projectId);
 
         Release release = new Release();
         release.setDeployment(deployment);
@@ -84,7 +91,9 @@ public class ReleaseService {
      * Rolls back the currently active release in its environment: triggers
      * the actual GitHub Actions rollback workflow via PipelineService (same
      * mechanism M3 already validates), then flips the blue-green slots back
-     * so the previous release becomes active again.
+     * so the previous release becomes active again. The "previous release"
+     * lookup is scoped to the same project as the release being rolled
+     * back, for the same isolation reason as createRelease above.
      */
     public void rollbackRelease(Long releaseId) {
         Release release = releaseRepository.findById(releaseId)
@@ -95,6 +104,8 @@ public class ReleaseService {
         }
 
         Long pipelineId = release.getDeployment().getPipeline().getId();
+        Long projectId = release.getDeployment().getPipeline().getProject().getId();
+
         pipelineService.executeRollback(pipelineId); // dispatches the real rollback workflow
 
         release.setActive(false);
@@ -102,9 +113,10 @@ public class ReleaseService {
         releaseRepository.save(release);
 
         // Reactivate the most recently superseded release in the same
-        // environment — that's the image the rollback workflow just
-        // redeployed.
-        releaseRepository.findByEnvironmentOrderByReleaseDateDesc(release.getEnvironment()).stream()
+        // environment AND same project — that's the image the rollback
+        // workflow just redeployed.
+        releaseRepository.findByEnvironmentAndDeployment_Pipeline_Project_IdOrderByReleaseDateDesc(
+                        release.getEnvironment(), projectId).stream()
                 .filter(r -> r.getStatus() == ReleaseStatus.SUPERSEDED)
                 .findFirst()
                 .ifPresent(prev -> {
@@ -114,13 +126,14 @@ public class ReleaseService {
                 });
     }
 
-    public Release getActiveRelease(DeploymentEnvironment environment) {
-        return releaseRepository.findTopByEnvironmentAndActiveTrueOrderByReleaseDateDesc(environment)
+    public Release getActiveRelease(Long projectId, DeploymentEnvironment environment) {
+        return releaseRepository.findTopByEnvironmentAndActiveTrueAndDeployment_Pipeline_Project_IdOrderByReleaseDateDesc(
+                        environment, projectId)
                 .orElseThrow(() -> new IllegalStateException("No active release for environment " + environment));
     }
 
-    public List<ReleaseResponse> getHistory() {
-        return releaseRepository.findAllByOrderByReleaseDateDesc().stream()
+    public List<ReleaseResponse> getHistory(Long projectId) {
+        return releaseRepository.findByDeployment_Pipeline_Project_IdOrderByReleaseDateDesc(projectId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -172,36 +185,43 @@ public class ReleaseService {
      * can scrape and Grafana can chart them like any other metric, and are
      * swappable for live-monitoring-derived values later without changing
      * the API contract.
+     *
+     * Scoped per-project: cache keys are project IDs, since KPIs are now
+     * computed per-project rather than globally across the whole platform.
      */
     // Prometheus scrapes /actuator/prometheus roughly every 10-15s, and
-    // ObservabilityConfig registers FOUR separate gauges that each call
-    // getKpis() independently — without this, one scrape = 4 full table
-    // scans + aggregations. Cached for a few seconds so a scrape (or a
-    // burst of dashboard requests) only recomputes once; still short
-    // enough that a brand-new release or rollback shows up almost
-    // immediately, so it's not "hardcoded", just debounced.
-    private volatile ReleaseKpiDTO cachedKpis;
-    private volatile long cachedKpisAt = 0L;
+    // ObservabilityConfig registers gauges that each call getKpis() —
+    // without this, one scrape = a full table scan + aggregation per
+    // project every time. Cached for a few seconds per-project so a
+    // scrape (or a burst of dashboard requests) only recomputes once per
+    // project; still short enough that a brand-new release or rollback
+    // shows up almost immediately, so it's not "hardcoded", just debounced.
+    private final Map<Long, ReleaseKpiDTO> cachedKpis = new ConcurrentHashMap<>();
+    private final Map<Long, Long> cachedKpisAt = new ConcurrentHashMap<>();
     private static final long KPI_CACHE_MS = 5000L;
 
-    public ReleaseKpiDTO getKpis() {
+    public ReleaseKpiDTO getKpis(Long projectId) {
         long now = System.currentTimeMillis();
-        ReleaseKpiDTO cached = cachedKpis;
-        if (cached != null && (now - cachedKpisAt) < KPI_CACHE_MS) {
-            return cached;
+        Long lastAt = cachedKpisAt.get(projectId);
+        if (lastAt != null && (now - lastAt) < KPI_CACHE_MS) {
+            ReleaseKpiDTO cached = cachedKpis.get(projectId);
+            if (cached != null) {
+                return cached;
+            }
         }
-        ReleaseKpiDTO fresh = computeKpis();
-        cachedKpis = fresh;
-        cachedKpisAt = now;
+        ReleaseKpiDTO fresh = computeKpis(projectId);
+        cachedKpis.put(projectId, fresh);
+        cachedKpisAt.put(projectId, now);
         return fresh;
     }
 
-    private ReleaseKpiDTO computeKpis() {
-        List<Release> all = releaseRepository.findAllByOrderByReleaseDateDesc();
+    private ReleaseKpiDTO computeKpis(Long projectId) {
+        List<Release> all = releaseRepository.findByDeployment_Pipeline_Project_IdOrderByReleaseDateDesc(projectId);
         long total = all.size();
 
         LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
-        long releasesThisMonth = releaseRepository.countByReleaseDateBetween(monthStart, LocalDateTime.now());
+        long releasesThisMonth = releaseRepository.countByReleaseDateBetweenAndDeployment_Pipeline_Project_Id(
+                monthStart, LocalDateTime.now(), projectId);
 
         List<Release> rolledBack = all.stream()
                 .filter(r -> r.getStatus() == ReleaseStatus.ROLLED_BACK)
@@ -209,7 +229,7 @@ public class ReleaseService {
         long rolledBackCount = rolledBack.size();
 
         double mttrMinutes = rolledBack.stream()
-                .mapToDouble(this::minutesToRecovery)
+                .mapToDouble(r -> minutesToRecovery(r, projectId))
                 .filter(m -> m >= 0)
                 .average()
                 .orElse(0);
@@ -223,8 +243,10 @@ public class ReleaseService {
     // Time between a rolled-back release going live and the replacement
     // release (the one that superseded it, redeployed after rollback)
     // going live — i.e. how long the bad release was serving traffic.
-    private double minutesToRecovery(Release rolledBackRelease) {
-        return releaseRepository.findByEnvironmentOrderByReleaseDateDesc(rolledBackRelease.getEnvironment()).stream()
+    // Scoped to the same project as the rolled-back release.
+    private double minutesToRecovery(Release rolledBackRelease, Long projectId) {
+        return releaseRepository.findByEnvironmentAndDeployment_Pipeline_Project_IdOrderByReleaseDateDesc(
+                        rolledBackRelease.getEnvironment(), projectId).stream()
                 .filter(r -> r.getReleaseDate().isAfter(rolledBackRelease.getReleaseDate()))
                 .min(Comparator.comparing(Release::getReleaseDate))
                 .map(next -> (double) Duration.between(rolledBackRelease.getReleaseDate(), next.getReleaseDate()).toMinutes())
@@ -247,4 +269,65 @@ public class ReleaseService {
                 d != null && d.getPipeline() != null ? d.getPipeline().getId() : null
         );
     }
+
+
+
+
+    /**
+     * Platform-wide KPIs, aggregated across ALL projects — used by
+     * ObservabilityConfig's Prometheus gauges, which are single global values
+     * and can't be parameterized per scrape. Per-project KPIs (used by the
+     * dashboard UI) go through getKpis(Long projectId) instead.
+     */
+    public ReleaseKpiDTO getPlatformKpis() {
+        long now = System.currentTimeMillis();
+        if (cachedPlatformKpis != null && (now - cachedPlatformKpisAt) < KPI_CACHE_MS) {
+            return cachedPlatformKpis;
+        }
+        ReleaseKpiDTO fresh = computePlatformKpis();
+        cachedPlatformKpis = fresh;
+        cachedPlatformKpisAt = now;
+        return fresh;
+    }
+
+    private volatile ReleaseKpiDTO cachedPlatformKpis;
+    private volatile long cachedPlatformKpisAt = 0L;
+
+    private ReleaseKpiDTO computePlatformKpis() {
+        List<Release> all = releaseRepository.findAllByOrderByReleaseDateDesc();
+        long total = all.size();
+
+        LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        long releasesThisMonth = releaseRepository.countByReleaseDateBetween(monthStart, LocalDateTime.now());
+
+        List<Release> rolledBack = all.stream()
+                .filter(r -> r.getStatus() == ReleaseStatus.ROLLED_BACK)
+                .collect(Collectors.toList());
+        long rolledBackCount = rolledBack.size();
+
+        double mttrMinutes = rolledBack.stream()
+                .mapToDouble(this::minutesToRecoveryPlatformWide)
+                .filter(m -> m >= 0)
+                .average()
+                .orElse(0);
+
+        double incidentRate = total == 0 ? 0 : (double) rolledBackCount / total;
+        double uptimePercent = Math.max(0, 100.0 - (incidentRate * 5.0));
+
+        return new ReleaseKpiDTO(releasesThisMonth, round(uptimePercent), round(mttrMinutes), total, rolledBackCount);
+    }
+
+    private double minutesToRecoveryPlatformWide(Release rolledBackRelease) {
+        return releaseRepository.findByEnvironmentOrderByReleaseDateDesc(rolledBackRelease.getEnvironment()).stream()
+                .filter(r -> r.getReleaseDate().isAfter(rolledBackRelease.getReleaseDate()))
+                .min(Comparator.comparing(Release::getReleaseDate))
+                .map(next -> (double) Duration.between(rolledBackRelease.getReleaseDate(), next.getReleaseDate()).toMinutes())
+                .orElse(-1.0);
+    }
+
+
+
+
+
+
 }
