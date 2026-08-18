@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom'
+
 export function StatusBadge({ status }) {
   const cls =
     status === 'ACTIVE' ? 'badge badge-active' : status === 'ON_HOLD' ? 'badge badge-hold' : 'badge badge-done'
@@ -20,7 +22,7 @@ export function Alert({ type = 'error', children, onClose }) {
 }
 
 export function Modal({ title, onClose, children }) {
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -31,7 +33,8 @@ export function Modal({ title, onClose, children }) {
         </div>
         <div className="modal-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -3,6 +3,7 @@ import { X, MessageSquare } from 'lucide-react'
 import { taskService } from '../services/taskService'
 import { blockerService } from '../services/blockerService'
 import { useAuth } from '../context/AuthContext'
+import { createPortal } from 'react-dom'
 
 const STATUS_LABEL = { TODO: 'To Do', IN_PROGRESS: 'In Progress', DONE: 'Done' }
 
@@ -95,7 +96,7 @@ export default function TaskDetailModal({ task, sprintId, sprintName, users, can
     onTaskChanged(updated)
   }
 
-  return (
+   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal task-detail-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -195,6 +196,7 @@ export default function TaskDetailModal({ task, sprintId, sprintName, users, can
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

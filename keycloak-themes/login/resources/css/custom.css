@@ -357,3 +357,41 @@ select {
     overflow-y: auto !important;
   }
 }
+
+.field-hint {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  margin-top: 4px;
+}
+
+/* ---------- Field validation errors ---------- */
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-top: 6px;
+}
+
+.field-error:empty {
+  display: none;
+  margin-top: 0;
+}
+
+.field-error::before {
+  content: "";
+  flex-shrink: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+input[aria-invalid="true"], select[aria-invalid="true"] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}

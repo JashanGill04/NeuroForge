@@ -44,6 +44,7 @@
   --info-soft: rgba(56, 189, 248, 0.15);
   --teal: #2dd4bf;
   --teal-soft: rgba(45, 212, 191, 0.15);
+   --modal-overlay-bg: rgba(0, 0, 0, 0.6);
 
   /* Sidebar */
   --sidebar-bg: #070b0e;
@@ -109,6 +110,7 @@
 
   --shadow: 0 1px 2px rgba(15, 30, 28, 0.05), 0 12px 28px rgba(15, 30, 28, 0.07);
   --shadow-glow: 0 0 0 1px rgba(13, 148, 136, 0.12), 0 8px 24px rgba(13, 148, 136, 0.10);
+  --modal-overlay-bg: rgba(15, 28, 27, 0.55);
 
   color-scheme: light;
 }
@@ -753,8 +755,8 @@ a { color: inherit; }
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(3px);
+  background: var(--modal-overlay-bg);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1519,7 +1521,7 @@ a { color: inherit; }
 .bd-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--modal-overlay-bg);
   z-index: 9999;
   display: flex;
   align-items: center;

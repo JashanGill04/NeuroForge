@@ -57,8 +57,8 @@
         </div>
 
         <!-- Right Form Side -->
-        <div style="width: 520px; display: flex; align-items: center; justify-content: center; padding: 40px; background: var(--bg); overflow-y: auto;">
-            <div class="auth-card" style="width: 100%; max-width: 400px;">
+        <div style="width: 560px; display: flex; align-items: center; align-items: safe center; justify-content: center; padding: 56px 72px; background: var(--bg); overflow-y: auto;">
+    <div class="auth-card" style="width: 100%; max-width: 400px; margin: auto 0;">
                 
                 <!-- Feedback Messages (Errors / Success) -->
                 <#if displayMessage && message?has_content && (message.type != 'warning' || !isAppInitiatedActionResponse?has_content)>
