@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface KpiSnapshotRepository extends JpaRepository<KpiSnapshot, Long> {
     List<KpiSnapshot> findByCapturedAtAfterOrderByCapturedAtAsc(LocalDateTime after);
+        List<KpiSnapshot> findByProjectIdAndCapturedAtAfterOrderByCapturedAtAsc(Long projectId, LocalDateTime after);
+
 }

@@ -13,8 +13,8 @@ public class Alert {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Enumerated(EnumType.STRING)
+    private Long projectId;
+   @Enumerated(EnumType.STRING)
     private AlertMetric metric;
 
     @Enumerated(EnumType.STRING)
@@ -50,4 +50,7 @@ public class Alert {
     public void setTriggeredAt(LocalDateTime triggeredAt) { this.triggeredAt = triggeredAt; }
     public LocalDateTime getResolvedAt() { return resolvedAt; }
     public void setResolvedAt(LocalDateTime resolvedAt) { this.resolvedAt = resolvedAt; }
+    public Long getProjectId() { return projectId; }
+    public void setProjectId(Long projectId) { this.projectId = projectId; }
+
 }

@@ -43,6 +43,7 @@ export default function ReleasesMonitoring() {
   const [rollingBack, setRollingBack] = useState(false)
 
 const fetchReleasesAndKpis = useCallback(async (silent = false) => {
+  if (!project?.id) return
   try {
     if (!silent) setLoading(true)
     const [releaseList, kpiData] = await Promise.all([
@@ -59,6 +60,7 @@ const fetchReleasesAndKpis = useCallback(async (silent = false) => {
 }, [project?.id])
 
   const fetchEnvHealth = useCallback(async (silent = false) => {
+    if (!project?.id) return
     if (!silent) setEnvLoading(true)
     const results = await Promise.allSettled(
       ENVIRONMENTS.map((env) => releaseService.getActiveRelease(project.id, env))
@@ -73,26 +75,28 @@ const fetchReleasesAndKpis = useCallback(async (silent = false) => {
     if (!silent) setEnvLoading(false)
   }, [project?.id])
 
-  const fetchAlerts = useCallback(async (silent = false) => {
-    if (!silent) setLoadingAlerts(true)
-    try {
-      const data = await alertService.getAlerts()
-      setAlerts(data || [])
-    } catch (err) {
-      console.error('Failed to load alerts', err)
-    } finally {
-      if (!silent) setLoadingAlerts(false)
-    }
-  }, [])
+ const fetchAlerts = useCallback(async (silent = false) => {
+  if (!project?.id) return
+  if (!silent) setLoadingAlerts(true)
+  try {
+    const data = await alertService.getAlerts(project.id)
+    setAlerts(data || [])
+  } catch (err) {
+    console.error('Failed to load alerts', err)
+  } finally {
+    if (!silent) setLoadingAlerts(false)
+  }
+}, [project?.id])
 
-  const fetchHistory = useCallback(async (silent = false) => {
-    try {
-      const data = await kpiHistoryService.getHistory(24)
-      setHistory(data || [])
-    } catch (err) {
-      console.error('Failed to load KPI history', err)
-    }
-  }, [])
+const fetchHistory = useCallback(async (silent = false) => {
+  if (!project?.id) return
+  try {
+    const data = await kpiHistoryService.getHistory(project.id, 24)
+    setHistory(data || [])
+  } catch (err) {
+    console.error('Failed to load KPI history', err)
+  }
+}, [project?.id])
 
   const refetchAll = useCallback((silent = false) => {
     fetchReleasesAndKpis(silent)
@@ -101,12 +105,19 @@ const fetchReleasesAndKpis = useCallback(async (silent = false) => {
     fetchHistory(silent)
   }, [fetchReleasesAndKpis, fetchEnvHealth, fetchAlerts, fetchHistory])
 
+  // Was `useEffect(..., [])` — ran exactly once, on the render where
+  // `project` was still null (before the parent layout finished loading
+  // it), and captured that stale closure for good. The interval kept
+  // re-calling the same project-is-null version of refetchAll forever,
+  // which is why this crashed on every 15s tick, not just once. Now it
+  // waits for a real project.id and re-subscribes if the project changes
+  // (e.g. navigating between projects without a full remount).
   useEffect(() => {
+    if (!project?.id) return
     refetchAll()
     const interval = setInterval(() => refetchAll(true), 15000)
     return () => clearInterval(interval)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [project?.id, refetchAll])
 
   useEffect(() => {
     const deploymentId = searchParams.get('deploymentId')
@@ -185,7 +196,7 @@ const fetchReleasesAndKpis = useCallback(async (silent = false) => {
       {error && <Alert onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert type="success" onClose={() => setSuccess('')}>{success}</Alert>}
 
-      {loading || !kpis ? (
+      {!project?.id || loading || !kpis ? (
         <EmptyState title="Loading release data…" icon={Rocket} />
       ) : (
         <>

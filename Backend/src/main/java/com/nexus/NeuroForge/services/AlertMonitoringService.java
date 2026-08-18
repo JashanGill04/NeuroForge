@@ -1,18 +1,13 @@
 package com.nexus.NeuroForge.services;
 
+import com.nexus.NeuroForge.dto.AlertRuleRequest;
 import com.nexus.NeuroForge.dto.PipelineKpiDTO;
 import com.nexus.NeuroForge.dto.ReleaseKpiDTO;
-import com.nexus.NeuroForge.models.Alert;
-import com.nexus.NeuroForge.models.AlertRule;
-import com.nexus.NeuroForge.models.Notification;
-import com.nexus.NeuroForge.models.User;
+import com.nexus.NeuroForge.models.*;
 import com.nexus.NeuroForge.models.interfaces.AlertMetric;
 import com.nexus.NeuroForge.models.interfaces.AlertStatus;
 import com.nexus.NeuroForge.models.interfaces.Role;
-import com.nexus.NeuroForge.repositories.AlertRepository;
-import com.nexus.NeuroForge.repositories.AlertRuleRepository;
-import com.nexus.NeuroForge.repositories.NotificationRepository;
-import com.nexus.NeuroForge.repositories.UserRepository;
+import com.nexus.NeuroForge.repositories.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -32,24 +27,32 @@ public class AlertMonitoringService {
     @Autowired private PipelineService pipelineService;
     @Autowired private UserRepository userRepository;
     @Autowired private NotificationRepository notificationRepository;
+    @Autowired private ProjectRepository projectRepository;
 
-    @Scheduled(fixedRate = 30000) // every 30s
+    @Scheduled(fixedRate = 30000)
     @Transactional
     public void evaluateRules() {
-        List<AlertRule> rules = alertRuleRepository.findByEnabledTrue();
+        for (Project project : projectRepository.findAll()) {
+            evaluateRulesForProject(project.getId());
+        }
+    }
+
+    private void evaluateRulesForProject(Long projectId) {
+        List<AlertRule> rules = alertRuleRepository.findByProjectIdAndEnabledTrue(projectId);
         if (rules.isEmpty()) return;
 
-        Map<AlertMetric, Double> currentValues = currentMetricValues();
+        Map<AlertMetric, Double> currentValues = currentMetricValues(projectId);
 
         for (AlertRule rule : rules) {
             Double value = currentValues.get(rule.getMetric());
             if (value == null) continue;
 
             boolean breached = isBreached(value, rule.getThresholdValue(), rule.getOperator());
-            List<Alert> active = alertRepository.findByMetricAndStatus(rule.getMetric(), AlertStatus.ACTIVE);
+            List<Alert> active = alertRepository.findByProjectIdAndMetricAndStatus(projectId, rule.getMetric(), AlertStatus.ACTIVE);
 
             if (breached && active.isEmpty()) {
                 Alert alert = new Alert();
+                alert.setProjectId(projectId);
                 alert.setMetric(rule.getMetric());
                 alert.setSeverity(rule.getSeverity());
                 alert.setStatus(AlertStatus.ACTIVE);
@@ -71,9 +74,9 @@ public class AlertMonitoringService {
         }
     }
 
-    private Map<AlertMetric, Double> currentMetricValues() {
-        ReleaseKpiDTO r = releaseService.getPlatformKpis();
-        PipelineKpiDTO p = pipelineService.getPlatformKpis();
+    private Map<AlertMetric, Double> currentMetricValues(Long projectId) {
+        ReleaseKpiDTO r = releaseService.getKpis(projectId);
+        PipelineKpiDTO p = pipelineService.getKpis(projectId);
         Map<AlertMetric, Double> values = new EnumMap<>(AlertMetric.class);
         values.put(AlertMetric.UPTIME_PERCENT, r.uptimePercent);
         values.put(AlertMetric.MTTR_MINUTES, r.mttrMinutes);
@@ -82,6 +85,16 @@ public class AlertMonitoringService {
         values.put(AlertMetric.PIPELINE_SUCCESS_RATE, p.getSuccessRate());
         values.put(AlertMetric.AVG_DEPLOY_MINUTES, p.getAvgDeployTimeMinutes());
         return values;
+    }
+
+    public List<Alert> getAllAlerts(Long projectId) { return alertRepository.findByProjectIdOrderByTriggeredAtDesc(projectId); }
+    public List<AlertRule> getAllRules(Long projectId) { return alertRuleRepository.findByProjectId(projectId); }
+
+    public AlertRule createRule(Long projectId, AlertRuleRequest req) {
+        AlertRule rule = new AlertRule();
+        rule.setProjectId(projectId);
+        applyRequest(rule, req);
+        return alertRuleRepository.save(rule);
     }
 
     private boolean isBreached(double value, double threshold, com.nexus.NeuroForge.models.interfaces.AlertOperator op) {
@@ -106,14 +119,6 @@ public class AlertMonitoringService {
         }
     }
 
-    public List<Alert> getAllAlerts() { return alertRepository.findAllByOrderByTriggeredAtDesc(); }
-    public List<AlertRule> getAllRules() { return alertRuleRepository.findAll(); }
-
-    public AlertRule createRule(com.nexus.NeuroForge.dto.AlertRuleRequest req) {
-        AlertRule rule = new AlertRule();
-        applyRequest(rule, req);
-        return alertRuleRepository.save(rule);
-    }
 
     public AlertRule updateRule(Long id, com.nexus.NeuroForge.dto.AlertRuleRequest req) {
         AlertRule rule = alertRuleRepository.findById(id)

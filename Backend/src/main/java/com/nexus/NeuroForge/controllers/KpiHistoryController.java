@@ -18,8 +18,9 @@ public class KpiHistoryController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<KpiSnapshot>> getHistory(@RequestParam(defaultValue = "24") int hours) {
+    public ResponseEntity<List<KpiSnapshot>> getHistory(@RequestParam Long projectId,
+                                                        @RequestParam(defaultValue = "24") int hours) {
         LocalDateTime since = LocalDateTime.now().minusHours(hours);
-        return ResponseEntity.ok(snapshotRepository.findByCapturedAtAfterOrderByCapturedAtAsc(since));
+        return ResponseEntity.ok(snapshotRepository.findByProjectIdAndCapturedAtAfterOrderByCapturedAtAsc(projectId, since));
     }
 }
