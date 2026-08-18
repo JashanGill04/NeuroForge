@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { EmptyState } from '../ui'
+import { formatIST } from '../pipeline/pipelineConstants'
 
 const SEVERITY_CLASS = { CRITICAL: 'badge-blocked', WARNING: 'badge-hold', INFO: 'badge-todo' }
 
@@ -25,7 +26,7 @@ export default function AlertsPanel({ alerts, loading }) {
                   {a.message}
                 </div>
                 <div className="list-item-sub">
-                  Triggered {new Date(a.triggeredAt).toLocaleString()}
+                  Triggered {formatIST(a.triggeredAt)}
                 </div>
               </div>
             </li>
