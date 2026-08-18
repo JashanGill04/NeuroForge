@@ -19,20 +19,20 @@ public class AlertController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<Alert>> getAlerts() {
-        return ResponseEntity.ok(alertMonitoringService.getAllAlerts());
+    public ResponseEntity<List<Alert>> getAlerts(@RequestParam Long projectId) {
+        return ResponseEntity.ok(alertMonitoringService.getAllAlerts(projectId));
     }
 
     @GetMapping("/rules")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<AlertRule>> getRules() {
-        return ResponseEntity.ok(alertMonitoringService.getAllRules());
+    public ResponseEntity<List<AlertRule>> getRules(@RequestParam Long projectId) {
+        return ResponseEntity.ok(alertMonitoringService.getAllRules(projectId));
     }
 
     @PostMapping("/rules")
     @PreAuthorize("hasAnyRole('ADMIN', 'PROJECT_MANAGER')")
-    public ResponseEntity<AlertRule> createRule(@RequestBody AlertRuleRequest req) {
-        return ResponseEntity.ok(alertMonitoringService.createRule(req));
+    public ResponseEntity<AlertRule> createRule(@RequestParam Long projectId, @RequestBody AlertRuleRequest req) {
+        return ResponseEntity.ok(alertMonitoringService.createRule(projectId, req));
     }
 
     @PutMapping("/rules/{id}")
