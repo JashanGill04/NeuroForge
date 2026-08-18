@@ -18,12 +18,9 @@ export function formatIST(dateStr) {
   const iso = hasTzInfo ? dateStr : `${dateStr}Z`
   const parsed = new Date(iso)
   if (isNaN(parsed.getTime())) return dateStr
-  return parsed.toLocaleString('en-IN', {
+  return parsed.toLocaleTimeString('en-IN', {
     timeZone: 'Asia/Kolkata',
-    day: 'numeric',
-    month: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
     hour12: true
   })

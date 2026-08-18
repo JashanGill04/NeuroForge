@@ -32,6 +32,15 @@ export default function ProjectLayout() {
   const { project, sprints, sprintId, setSprintId, loading, error } = projectCtx
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+{loading ? (
+  <div className="empty-sub">Loading…</div>
+) : !project ? (
+  <EmptyState title="Project not found" subtitle={error} />
+) : (
+  <Outlet context={projectCtx} />
+)}
+
+
   return (
     <div className="app-shell">
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}

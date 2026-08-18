@@ -1,18 +1,10 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { EmptyState } from '../ui'
+import { formatIST } from '../pipeline/pipelineConstants'
 
 export default function KpiTrendChart({ history }) {
-  // toLocaleTimeString([]) uses whatever timezone the browser/OS is set
-  // to — fine if every viewer is in IST, wrong the moment someone isn't.
-  // Pinning timeZone explicitly means the axis always reads IST
-  // regardless of who's looking at it, matching formatIST elsewhere.
   const data = history.map((h) => ({
-    time: new Date(h.capturedAt).toLocaleTimeString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }),
+    time: formatIST(h.capturedAt),
     uptime: h.uptimePercent,
     successRate: h.pipelineSuccessRate
   }))
